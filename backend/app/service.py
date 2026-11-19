@@ -98,6 +98,27 @@ def _rule_dict(rule: VprRule, from_cache: bool) -> dict:
     }
 
 
+CODE_HOSTS = ("municode", "ecode360", "amlegal", "codepublishing", "municipal.codes", "generalcode", "gocodebook")
+
+
+def _known_domains(jurisdiction_id: int) -> list[str]:
+    """Sites already linked for this jurisdiction (e.g. the city's own .gov site) so filtered search can read them."""
+    domains: list[str] = []
+    with session_scope() as s:
+        rules = s.scalars(select(VprRule).where(VprRule.jurisdiction_id == jurisdiction_id,
+                                                 VprRule.status != "error")).all()
+        for r in rules:
+            d = r.data or {}
+            urls = [d.get(f) for f in URL_FIELDS] + [l.get("url") for l in d.get("additional_links") or []]
+            for u in urls:
+                host = (URL_RE.findall(u or "") or [""])[0].split("/")[2:3]
+                if host:
+                    h = host[0].lower().removeprefix("www.")
+                    if not any(c in h for c in CODE_HOSTS) and h not in domains:
+                        domains.append(h)
+    return domains[:10]
+
+
 def get_or_research(j: dict, loc: dict, force: bool, on_state=lambda key, state: None) -> dict:
     """Return the current rule for a jurisdiction, researching it if missing or older than the TTL."""
     ttl = timedelta(days=get_settings().cache_ttl_days)
@@ -113,7 +134,8 @@ def get_or_research(j: dict, loc: dict, force: bool, on_state=lambda key, state:
 
         on_state(j["key"], "researching")
         try:
-            out = research.research_jurisdiction(j["level"], j["display_name"], loc["state_name"], loc["state_code"])
+            out = research.research_jurisdiction(j["level"], j["display_name"], loc["state_name"], loc["state_code"],
+                                                 extra_domains=_known_domains(jur_id))
             d = _normalize(out["data"])
             checks = linkcheck.check_urls([d.get(f) for f in URL_FIELDS]
                                           + [link["url"] for link in d["additional_links"]])

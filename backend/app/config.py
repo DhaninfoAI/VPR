@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     openai_search_context: str = "medium"
     # Max tool calls (web searches) per research; 0 = no limit
     openai_max_tool_calls: int = 8
+    # Comma-separated list of sites web search may read for city/county research (subdomains included).
+    # Keeps the model on code libraries and registries instead of unrelated pages. Blank = no filter.
+    # OpenAI does not accept a bare TLD such as "gov"; the jurisdiction's own site is added per call
+    # when it is known from earlier research. State-level research is not filtered.
+    openai_allowed_domains: str = (
+        "municode.com,ecode360.com,amlegal.com,codepublishing.com,municipal.codes,generalcode.com,"
+        "gocodebook.com,safeguardproperties.com,prochamps.com"
+    )
+
+    @property
+    def allowed_domains(self) -> list[str]:
+        return [d.strip() for d in self.openai_allowed_domains.split(",") if d.strip()]
     # A saved jurisdiction rule older than this is re-researched on the next lookup.
     cache_ttl_days: int = 3
     # How many jurisdictions (state / county / city) are researched in parallel.

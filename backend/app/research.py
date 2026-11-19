@@ -79,6 +79,7 @@ How to research:
 - Only report rules enacted by THIS jurisdiction: the state legislature/agencies for a state, the county board for a county, the municipal council for a city/town. Never attribute a city ordinance to its county or vice versa.
 - A state statute that merely authorises municipalities to adopt registration ordinances is NOT a state-level requirement; mention it in the summary instead.
 - ordinance_url, registration_form_url and registration_portal_url must each contain exactly ONE URL. Put any other forms (e.g. a second registration form), fee schedules or guidance documents in additional_links.
+- ordinance_url must point to the ordinance/statute itself (a code library section such as Municode, eCode360, American Legal, Code Publishing or *.municipal.codes, or the government's own page) - never to a news article, blog post or summary site. Put summary/tracker pages in source_urls only.
 - Never invent or guess URLs. Only output URLs you actually saw in search results. Use null when you could not find one.
 - Look for the registration form/portal and the current fee schedule (fees are often in a separate fee resolution or on the registry site).
 - If you searched the code and found no registration requirement, answer "No" and set ordinance_url to the jurisdiction's code of ordinances (or statutes) page so the operator can verify.
@@ -105,7 +106,8 @@ def _level_hint(level: str, state_name: str) -> str:
             "applies_in_incorporated_areas: \"Not applicable\".")
 
 
-def research_jurisdiction(level: str, display_name: str, state_name: str, state_code: str) -> dict:
+def research_jurisdiction(level: str, display_name: str, state_name: str, state_code: str,
+                          extra_domains: list[str] | None = None) -> dict:
     settings = get_settings()
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY is not set in backend/.env")
@@ -120,7 +122,7 @@ def research_jurisdiction(level: str, display_name: str, state_name: str, state_
         model=settings.openai_model,
         instructions=INSTRUCTIONS,
         input=prompt,
-        tools=[{"type": "web_search", "search_context_size": settings.openai_search_context}],
+        tools=[_web_search_tool(settings, level, extra_domains or [])],
         include=["web_search_call.action.sources"],
         text={"format": {"type": "json_schema", "name": "vpr_rule", "schema": RULE_SCHEMA, "strict": True}},
     )
@@ -141,6 +143,14 @@ def research_jurisdiction(level: str, display_name: str, state_name: str, state_
     }
     log.info("Researched %s with %s: %s", display_name, response.model, stats)
     return {"data": data, "sources": _collect_sources(response), "model": response.model, "stats": stats}
+
+
+def _web_search_tool(settings, level: str, extra_domains: list[str]) -> dict:
+    tool: dict = {"type": "web_search", "search_context_size": settings.openai_search_context}
+    if settings.allowed_domains and level != "state":
+        domains = list(dict.fromkeys(settings.allowed_domains + extra_domains))
+        tool["filters"] = {"allowed_domains": domains[:100]}
+    return tool
 
 
 def _collect_sources(response) -> list[dict]:
