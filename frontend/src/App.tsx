@@ -384,7 +384,7 @@ function LookupView({ lookup }: { lookup: Lookup }) {
           </div>
           <div className="head-actions">
             <CopyButton text={res.row["Notes"]} label="Copy notes" />
-            <a className="btn" href={`/api/lookups/${lookup.id}/export.xlsx`}>
+            <a className="btn" href={`api/lookups/${lookup.id}/export.xlsx`}>
               <Icon name="download" /> Excel
             </a>
           </div>
@@ -695,7 +695,7 @@ function HistoryPage({ onOpen }: { onOpen: (id: string) => void }) {
         title="History"
         sub="Every address looked up. Click a row to open the result."
         actions={
-          <a className="btn" href="/api/export.xlsx">
+          <a className="btn" href="api/export.xlsx">
             <Icon name="download" /> Export all
           </a>
         }

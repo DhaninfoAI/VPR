@@ -115,16 +115,16 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => req<Health>("/api/health"),
-  states: () => req<{ code: string; name: string }[]>("/api/states"),
+  health: () => req<Health>("api/health"),
+  states: () => req<{ code: string; name: string }[]>("api/states"),
   create: (body: LookupInput & { force_refresh: boolean }) =>
-    req<{ id: string }>("/api/lookups", {
+    req<{ id: string }>("api/lookups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  get: (id: string) => req<Lookup>(`/api/lookups/${id}`),
-  list: () => req<Lookup[]>("/api/lookups?limit=50"),
+  get: (id: string) => req<Lookup>(`api/lookups/${id}`),
+  list: () => req<Lookup[]>("api/lookups?limit=50"),
   jurisdictions: (state?: string) =>
-    req<SavedRule[]>(`/api/jurisdictions${state ? `?state=${state}` : ""}`),
+    req<SavedRule[]>(`api/jurisdictions${state ? `?state=${state}` : ""}`),
 };
