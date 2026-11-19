@@ -41,6 +41,9 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <div className="theme-wrap">
+          <ThemeSwitch />
+        </div>
         <div className="side-foot">
           <div className="side-label">System</div>
           <Status
@@ -67,6 +70,64 @@ export default function App() {
         )}
         {page === "saved" && <SavedPage />}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ theme */
+
+type Theme = "system" | "light" | "dark";
+const THEME_KEY = "vpr-theme";
+
+function readTheme(): Theme {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    return t === "light" || t === "dark" ? t : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function applyTheme(t: Theme) {
+  const root = document.documentElement;
+  if (t === "system") delete root.dataset.theme;
+  else root.dataset.theme = t;
+}
+
+applyTheme(readTheme()); // before first paint, so there is no flash of the wrong theme
+
+function ThemeSwitch() {
+  const [theme, setTheme] = useState<Theme>(readTheme);
+  useEffect(() => {
+    applyTheme(theme);
+    try {
+      if (theme === "system") localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      /* storage unavailable - theme still applies for this visit */
+    }
+  }, [theme]);
+  const opts: { id: Theme; icon: string; label: string }[] = [
+    { id: "system", icon: "monitor", label: "Auto" },
+    { id: "light", icon: "sun", label: "Light" },
+    { id: "dark", icon: "moon", label: "Dark" },
+  ];
+  return (
+    <div className="theme-switch" role="radiogroup" aria-label="Color theme">
+      {opts.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={theme === o.id}
+          title={`${o.label} theme`}
+          className={theme === o.id ? "active" : ""}
+          onClick={() => setTheme(o.id)}
+        >
+          <Icon name={o.icon} size={14} />
+          <span className="label">{o.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
