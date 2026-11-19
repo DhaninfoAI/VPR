@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, Flag, Health, LevelEntry, Lookup, Rule, RuleData, SavedRule } from "./api";
+import { api, Flag, LevelEntry, Lookup, Rule, RuleData, SavedRule } from "./api";
 import { Icon } from "./icons";
 
 type Page = "lookup" | "history" | "saved";
@@ -12,13 +12,8 @@ const NAV: { id: Page; label: string; icon: string }[] = [
 
 export default function App() {
   const [page, setPage] = useState<Page>("lookup");
-  const [health, setHealth] = useState<Health | null>(null);
-  const [healthErr, setHealthErr] = useState(false);
   const [openId, setOpenId] = useState<string | null>(() => location.hash.match(/^#\/lookup\/(.+)$/)?.[1] ?? null);
 
-  useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealthErr(true));
-  }, []);
   useEffect(() => {
     if (openId) history.replaceState(null, "", `#/lookup/${openId}`);
   }, [openId]);
@@ -43,18 +38,6 @@ export default function App() {
         </nav>
         <div className="theme-wrap">
           <ThemeSwitch />
-        </div>
-        <div className="side-foot">
-          <div className="side-label">System</div>
-          <Status
-            ok={healthErr ? false : health ? health.db === "ok" : null}
-            label={healthErr ? "Server unreachable" : health ? "Database connected" : "Checking…"}
-          />
-          <Status
-            ok={health ? health.openai_key_configured : null}
-            label={health ? (health.openai_key_configured ? `OpenAI · ${health.model}` : "OpenAI key missing") : "Checking…"}
-          />
-          {health && <div className="side-note">Saved rules refresh every {health.cache_ttl_days} days</div>}
         </div>
       </aside>
 
@@ -132,14 +115,6 @@ function ThemeSwitch() {
   );
 }
 
-function Status({ ok, label }: { ok: boolean | null; label: string }) {
-  return (
-    <div className="status-row">
-      <span className={`status-dot ${ok === null ? "" : ok ? "ok" : "bad"}`} />
-      {label}
-    </div>
-  );
-}
 
 function PageHead({ title, sub, actions }: { title: string; sub: string; actions?: React.ReactNode }) {
   return (
