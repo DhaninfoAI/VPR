@@ -1,0 +1,191 @@
+[
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Banning",
+  "display_name": "City of Banning",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Abandoned, distressed or vacant property (not only foreclosures).",
+   "who_must_register": "Owner (including lender/beneficiary for properties in default).",
+   "registration_deadline": null,
+   "ordinance_name": "Banning Municipal Code - abandoned, distressed and vacant property registration",
+   "ordinance_url": "https://gocodebook.com/us/california/banning/foreclosure-and-auctions",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Mail",
+   "third_party_platform": null,
+   "registration_fee": "Set by City Council resolution; not prorated.",
+   "renewal_fee": null,
+   "renewal_frequency": "Annual until the property is no longer vacant",
+   "additional_links": [],
+   "documents_required": [
+    "Registration with the Community Development Department",
+    "Owner / beneficiary contact",
+    "Local property manager",
+    "Property address / APN",
+    "Fee"
+   ],
+   "other_requirements": [],
+   "penalties": null,
+   "contact_info": null,
+   "summary": "Banning requires owners of abandoned, distressed or vacant property to register with Community Development and renew annually until occupied; fees set by council resolution.",
+   "confidence": "Low",
+   "confidence_reason": "From a code summary site.",
+   "source_urls": [
+    "https://gocodebook.com/us/california/banning/foreclosure-and-auctions"
+   ],
+   "jurisdiction_name": "City of Banning",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "Yes"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "California City",
+  "display_name": "City of California City",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Vacant property and foreclosed property.",
+   "who_must_register": null,
+   "registration_deadline": null,
+   "ordinance_name": "California City Municipal Code Sec. 5-1.1A04 et seq. - registered vacant and foreclosed property",
+   "ordinance_url": "https://gocodebook.com/us/california/california-city/foreclosure-and-auctions",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": null,
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [
+    "City registration",
+    "Owner / beneficiary contact",
+    "Local property manager (required if owner is more than 25 road miles away)",
+    "Property address / APN"
+   ],
+   "other_requirements": [
+    "Maintain and secure the property",
+    "Post the property manager's contact information on the property"
+   ],
+   "penalties": null,
+   "contact_info": null,
+   "summary": "California City requires registration of vacant and foreclosed properties, with upkeep and security standards and a posted local contact when the owner is more than 25 road miles away.",
+   "confidence": "Low",
+   "confidence_reason": "From a code summary site.",
+   "source_urls": [
+    "https://gocodebook.com/us/california/california-city/foreclosure-and-auctions"
+   ],
+   "jurisdiction_name": "City of California City",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "Yes"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Ridgecrest",
+  "display_name": "City of Ridgecrest",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Vacant or boarded building.",
+   "who_must_register": "Owner.",
+   "registration_deadline": null,
+   "ordinance_name": "Ridgecrest Municipal Code - vacant/boarded building monitoring",
+   "ordinance_url": "https://gocodebook.com/us/california/ridgecrest/foreclosure-and-auctions",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": "Monitoring fee set by council resolution.",
+   "renewal_fee": null,
+   "renewal_frequency": "Re-monitored every 90 days until occupied",
+   "additional_links": [],
+   "documents_required": [],
+   "other_requirements": [],
+   "penalties": null,
+   "contact_info": null,
+   "summary": "Ridgecrest monitors vacant or boarded buildings every 90 days until occupied and charges the owner a monitoring fee set by council resolution.",
+   "confidence": "Low",
+   "confidence_reason": "From a code summary site.",
+   "source_urls": [
+    "https://gocodebook.com/us/california/ridgecrest/foreclosure-and-auctions"
+   ],
+   "jurisdiction_name": "City of Ridgecrest",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Adelanto",
+  "display_name": "City of Adelanto",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": null,
+   "who_must_register": null,
+   "registration_deadline": null,
+   "ordinance_name": null,
+   "ordinance_url": null,
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": null,
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [],
+   "other_requirements": [],
+   "penalties": null,
+   "contact_info": null,
+   "summary": "City of Adelanto: a vacant-property maintenance ordinance (proposed Ch. 8.32, with fines) advanced in March 2026; it is not clearly a registration requirement and adoption was not confirmed - verify.",
+   "confidence": "Low",
+   "confidence_reason": "Only a proposal was found.",
+   "source_urls": [
+    "https://cpo.soar.com/articles/7740071/Adelanto/San-Bernardino-County/California/Council-advances-vacant-property-maintenance-ordinance-with-fines-and-enforcement-steps"
+   ],
+   "jurisdiction_name": "City of Adelanto",
+   "vacant_registration_required": "Unclear",
+   "foreclosure_registration_required": "Unclear"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Barstow",
+  "display_name": "City of Barstow",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": null,
+   "who_must_register": null,
+   "registration_deadline": null,
+   "ordinance_name": null,
+   "ordinance_url": null,
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": null,
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [],
+   "other_requirements": [],
+   "penalties": null,
+   "contact_info": null,
+   "summary": "City of Barstow: only a rental property inspection/registration program (Ch. 5.91, $100 per single-family rental) was found; no vacant/foreclosed registry found - verify.",
+   "confidence": "Low",
+   "confidence_reason": "Not found.",
+   "source_urls": [
+    "https://barstowca.org/home/showpublisheddocument/7979/638096375774170000"
+   ],
+   "jurisdiction_name": "City of Barstow",
+   "vacant_registration_required": "Unclear",
+   "foreclosure_registration_required": "Unclear"
+  }
+ }
+]

@@ -1,0 +1,274 @@
+[
+ {
+  "level": "city",
+  "state": "DE",
+  "name": "Wilmington",
+  "display_name": "City of Wilmington",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Building vacant for more than 45 consecutive days (a 2023 proposal to raise this to six months was not confirmed as adopted).",
+   "who_must_register": "Property owner (with a resident agent who can accept service of process if the owner is a corporation).",
+   "registration_deadline": "Once the building has been vacant 45 consecutive days; fees are assessed as of November 1 each year.",
+   "ordinance_name": "Wilmington City Code Chapter 4, Sec. 4-27 (Vacant property registration); fees amended by Ord. 24-037",
+   "ordinance_url": "https://wilmingtoncitycouncil.com/wp-content/uploads/2023/12/Ord.-24-037-0441-Amend-Chapter-4-Relating-to-Vacant-Property-Registration-Fees-mc.pdf",
+   "registration_form_url": "https://wilmingtonde.gov/home/showpublisheddocument/116/638283157543000000",
+   "registration_portal_url": "https://www.wilmingtonde.gov/government/city-departments/licenses-and-inspections/vacant-property-registration-program/register-a-vacant-property",
+   "registration_method": "Multiple",
+   "third_party_platform": null,
+   "registration_fee": "Annual fee based on the total years the property has been vacant as of November 1: schedule starts at $500 (1 year vacant) and $1,000 (2 years), rising with each additional year of vacancy, regardless of changes in ownership. A 2024 proposal to raise fees was reported; confirm the current schedule with L&I.",
+   "renewal_fee": "Escalating annual fee (see registration fee)",
+   "renewal_frequency": "Annual (assessed November 1)",
+   "additional_links": [
+    {
+     "label": "Appeal a vacant property fee",
+     "url": "https://www.wilmingtonde.gov/government/city-departments/licenses-and-inspections/vacant-property-registration-program/appeal-a-vacant-property-fee"
+    }
+   ],
+   "documents_required": [
+    "Completed City of Wilmington vacant property registration form (fill out completely and accurately)",
+    "Property address",
+    "Owner name and mailing address (P.O. boxes are not accepted)",
+    "Resident agent name, address and email - must be an individual able to accept service of process",
+    "If the owner is a corporation: name of a principal",
+    "Signature and date of the owner or agent",
+    "Payment of the annual vacant registration fee"
+   ],
+   "other_requirements": [
+    "Notify L&I in writing if the owner's mailing address changes or the property is sold (Sec. 4-27)",
+    "One-time fee waiver available while the property is under substantial repair",
+    "Buildings deemed 'occupancy ready' and actively for sale or lease may be exempt for up to 2 consecutive billing cycles (Ord. 24-037)",
+    "Owner may appeal a fee by proving the property was occupied"
+   ],
+   "penalties": "Potential $500 fine for non-payment; the City may bring a civil action to collect unpaid fees.",
+   "contact_info": "Department of Licenses & Inspections, 800 N. French Street, 3rd Floor, Wilmington, DE 19801 - vacantproperty@wilmingtonde.gov - 302-576-3096",
+   "summary": "Wilmington requires owners of buildings vacant more than 45 consecutive days to register with the Department of Licenses & Inspections and pay an annual fee that escalates with the number of years vacant (from $500). Forms can be mailed, faxed or emailed.",
+   "confidence": "High",
+   "confidence_reason": "City L&I pages and council ordinances confirm the program; the current fee schedule should be confirmed because 2024 changes were proposed.",
+   "source_urls": [
+    "https://wilmingtonde.gov/government/city-departments/licenses-and-inspections/vacant-property-registration-program/register-a-vacant-property",
+    "https://wilmingtonde.gov/home/showpublisheddocument/116/638283157543000000",
+    "https://wilmingtoncitycouncil.com/wp-content/uploads/2023/12/Ord.-24-037-0441-Amend-Chapter-4-Relating-to-Vacant-Property-Registration-Fees-mc.pdf"
+   ],
+   "jurisdiction_name": "City of Wilmington",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Sacramento",
+  "display_name": "City of Sacramento",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Building that remains vacant beyond one month (vacant building monitoring under City Code Ch. 8.100).",
+   "who_must_register": "Property owner.",
+   "registration_deadline": null,
+   "ordinance_name": "Sacramento City Code Ch. 8.100, Secs. 8.100.1200-8.100.1260 (Vacant buildings)",
+   "ordinance_url": "https://codelibrary.amlegal.com/codes/sacramentoca/latest/sacramento_ca/0-0-0-18718",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": "Monthly monitoring fee of $380 for a building vacant more than one month, plus a $500 enforcement response fee each time a building inspector is called to the site.",
+   "renewal_fee": null,
+   "renewal_frequency": "Monthly monitoring fee while vacant",
+   "additional_links": [
+    {
+     "label": "Housing and dangerous buildings (city page)",
+     "url": "https://cityofsacramento.gov/community-development/code-compliance/housing-and-dangerous-buildings"
+    }
+   ],
+   "documents_required": [
+    "Owner contact notice posted on the front of the building",
+    "Owner / responsible party contact information to Code Compliance"
+   ],
+   "other_requirements": [
+    "Board/secure the vacant building to city standards (Sec. 8.100.1220)",
+    "Maintain landscaping and exterior and prevent criminal activity (Sec. 8.100.1250)",
+    "Separate annual vacant LOT registration ($70 per parcel) applies to vacant lots under Ch. 8.136"
+   ],
+   "penalties": "Vacant building penalties under Sec. 8.100.1230; repeat violations reported at $2,000-$10,000 (verify).",
+   "contact_info": "City of Sacramento Code Compliance Division - (916) 808-7902",
+   "summary": "Sacramento imposes a vacant building monitoring program: buildings vacant more than a month incur a $380 monthly monitoring fee plus $500 per inspector call-out, must post owner contact information and be secured and maintained. There is no separate foreclosure registry.",
+   "confidence": "Medium",
+   "confidence_reason": "Fees confirmed on the city website; a formal registration form/process was not found.",
+   "source_urls": [
+    "https://cityofsacramento.gov/community-development/code-compliance/housing-and-dangerous-buildings",
+    "https://codelibrary.amlegal.com/codes/sacramentoca/latest/sacramento_ca/0-0-0-18718"
+   ],
+   "jurisdiction_name": "City of Sacramento",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Fresno",
+  "display_name": "City of Fresno",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Vacant or blighted building (Blighted and Vacant Building Ordinance, 2015).",
+   "who_must_register": "Property owner.",
+   "registration_deadline": null,
+   "ordinance_name": "Fresno Blighted and Vacant Building Ordinance (2015) - vacant/blighted property registry",
+   "ordinance_url": "https://agendas.fresno.gov/es/legislation/id-15-343-2402",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": "No registration fee identified (the 2015 proposal did not include a fee); confirm with Code Enforcement.",
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [
+    "Owner name and contact information",
+    "Property address / APN",
+    "Vacancy status and plans for the building"
+   ],
+   "other_requirements": [
+    "Maintain and secure vacant buildings to city blight standards"
+   ],
+   "penalties": null,
+   "contact_info": "City of Fresno Code Enforcement",
+   "summary": "Fresno adopted a Blighted and Vacant Building Ordinance in 2015 that created a registry owners of vacant or blighted buildings must enter; no registration fee was identified. There is no lender-specific foreclosure registry.",
+   "confidence": "Low",
+   "confidence_reason": "Based on 2015 council records and news coverage; the current ordinance text and fee were not accessible.",
+   "source_urls": [
+    "https://agendas.fresno.gov/es/legislation/id-15-343-2402",
+    "https://abc30.com/post/fresno-city-council-approves-anti-blight-ordinance/724786/"
+   ],
+   "jurisdiction_name": "City of Fresno",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Bakersfield",
+  "display_name": "City of Bakersfield",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Vacant building (BMC 8.27.015).",
+   "who_must_register": "Owner of a vacant building.",
+   "registration_deadline": null,
+   "ordinance_name": "Bakersfield Municipal Code Sec. 8.27.015 - Vacant buildings (Ord. 5115, 2022; amended Ord. 5150, 2024)",
+   "ordinance_url": "https://bakersfield.municipal.codes/enactments/Ord5150/media/original.pdf",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Online portal",
+   "third_party_platform": null,
+   "registration_fee": "Free (registration in the city Vacant Building Registry is free).",
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [
+    "Owner name and contact information (signage with owner contact is required for vacant buildings)",
+    "Plan for the vacant building"
+   ],
+   "other_requirements": [
+    "Keep vacant buildings safe and secure",
+    "Post prominent signage with the owner's name and contact information"
+   ],
+   "penalties": "Infraction, misdemeanor or administrative citation under BMC Ch. 1.40.",
+   "contact_info": "City of Bakersfield Building Department",
+   "summary": "Bakersfield's vacant building ordinance (BMC 8.27.015) requires vacant buildings to be secured and provides for a free Vacant Building Registry run by the Building Director; it is aimed mainly at empty commercial/downtown buildings. Whether it applies to vacant residential properties was not confirmed.",
+   "confidence": "Low",
+   "confidence_reason": "The code site blocked automated reading; details come from code history pages and news coverage.",
+   "source_urls": [
+    "https://bakersfield.municipal.codes/Code/8.27.015/history",
+    "https://safeguardproperties.com/?p=40014"
+   ],
+   "jurisdiction_name": "City of Bakersfield",
+   "vacant_registration_required": "Unclear",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "city",
+  "state": "CA",
+  "name": "Stockton",
+  "display_name": "City of Stockton",
+  "data": {
+   "applies_in_incorporated_areas": "Not applicable",
+   "registration_trigger": "Property classified as abandoned or vacant (SMC Ch. 15.32).",
+   "who_must_register": "Owner / trustee / beneficiary / local property manager.",
+   "registration_deadline": null,
+   "ordinance_name": "Stockton Municipal Code Ch. 15.32 - Security and Rehabilitation of Abandoned and Vacant Property",
+   "ordinance_url": "https://ecode360.com/ST5019/index",
+   "registration_form_url": null,
+   "registration_portal_url": null,
+   "registration_method": "Unknown",
+   "third_party_platform": null,
+   "registration_fee": null,
+   "renewal_fee": null,
+   "renewal_frequency": null,
+   "additional_links": [],
+   "documents_required": [
+    "Posting on the property with the name and 24-hour phone number of the trustee, beneficiary, owner, realtor or local property manager"
+   ],
+   "other_requirements": [
+    "Owner or local property manager must inspect the abandoned/vacant property monthly (SMC 15.32.060)",
+    "Secure and maintain the property"
+   ],
+   "penalties": null,
+   "contact_info": "City of Stockton Code Enforcement - https://stocktonca.gov/services/code_enforcement/",
+   "summary": "Stockton's SMC 15.32 imposes security, posting and monthly inspection duties on abandoned/vacant properties; a formal registration requirement and fee could not be confirmed (aggregator claims of a $1,000-$5,000 registry were not verified, and 2025 vacant-building fees were only proposed).",
+   "confidence": "Low",
+   "confidence_reason": "Official code text was not accessible; secondary sources conflict.",
+   "source_urls": [
+    "https://stocktonca.gov/services/code_enforcement/",
+    "https://stocktonia.org/news/local-government/2025/03/11/stockton-eyes-hefty-fees-on-owners-of-vacant-buildings-to-fight-blight/"
+   ],
+   "jurisdiction_name": "City of Stockton",
+   "vacant_registration_required": "Unclear",
+   "foreclosure_registration_required": "No"
+  }
+ },
+ {
+  "level": "county",
+  "state": "CA",
+  "name": "Kern",
+  "display_name": "Kern County",
+  "data": {
+   "applies_in_incorporated_areas": "No",
+   "registration_trigger": "Residential property that appears vacant and is in default/foreclosure (treated as abandoned under Sec. 8.45.050).",
+   "who_must_register": "Responsible party or beneficiary (lender).",
+   "registration_deadline": "Within 30 days of the property becoming abandoned/vacant.",
+   "ordinance_name": "Kern County Ordinance Code Ch. 8.45 - Abandoned residential property registration",
+   "ordinance_url": "https://kernpublicworks.com/home/showpublisheddocument/10832/638658077138230000",
+   "registration_form_url": "https://kernpublicworks.com/home/showpublisheddocument/10832/638658077138230000",
+   "registration_portal_url": null,
+   "registration_method": "Mail",
+   "third_party_platform": null,
+   "registration_fee": "$152 per year per abandoned residential property (not prorated).",
+   "renewal_fee": "$152",
+   "renewal_frequency": "Annual, until the property is sold/transferred or the foreclosure is dismissed",
+   "additional_links": [],
+   "documents_required": [
+    "Completed Kern County abandoned residential property registration form",
+    "Property address / APN",
+    "Beneficiary / responsible party name, address and phone",
+    "Local property manager contact",
+    "Annual fee $152"
+   ],
+   "other_requirements": [
+    "Maintain and secure the property while registered",
+    "California county ordinances apply only in unincorporated territory, so this county rule does not apply to properties inside an incorporated city."
+   ],
+   "penalties": null,
+   "contact_info": "Kern County Public Works",
+   "summary": "Kern County (unincorporated areas) requires the beneficiary/responsible party to register vacant residential properties in default within 30 days, $152 per year, until sold or the foreclosure is dismissed. California county ordinances apply only in unincorporated territory, so this county rule does not apply to properties inside an incorporated city.",
+   "confidence": "Medium",
+   "confidence_reason": "Based on the county registration form; ordinance text and current fee resolution were not accessible.",
+   "source_urls": [
+    "https://kernpublicworks.com/home/showpublisheddocument/10832/638658077138230000"
+   ],
+   "jurisdiction_name": "Kern County",
+   "vacant_registration_required": "Yes",
+   "foreclosure_registration_required": "Yes"
+  }
+ }
+]

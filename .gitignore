@@ -1,0 +1,11 @@
+backend/.env
+**/.venv/
+**/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+# Derived from the client's work-order workbook - keep local
+seed/jurisdictions.json
+*.xlsx
+.env
+*.tsbuildinfo
