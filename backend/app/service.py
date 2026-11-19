@@ -213,6 +213,22 @@ def _level_entry(level: str, j: dict | None, rule: dict | None, loc: dict) -> di
     return entry
 
 
+def _is_foreclosure_stop(entry: dict) -> bool:
+    """A level that applies to the property and requires FORECLOSURE registration ends the review."""
+    data = (entry.get("rule") or {}).get("data") or {}
+    return entry.get("flag") == "Yes" and data.get("foreclosure_registration_required") == "Yes"
+
+
+def _skipped_entry(level: str, j: dict, stop: dict) -> dict:
+    return {"level": level, "jurisdiction": j["display_name"], "flag": "No", "rule": None, "skipped": True,
+            "reason": (f"Not reviewed: foreclosure registration is required at the {stop['jurisdiction']} level, "
+                       f"so further review was not done.")}
+
+
+def _condition(data: dict) -> str | None:
+    return data.get("requirement_conditions") or data.get("registration_trigger")
+
+
 # --------------------------------------------------------------------------- output
 
 
@@ -242,20 +258,40 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
             return "".join(ns)
         return ", ".join(ns[:-1]) + f" {conj} " + ns[-1]
 
+    stop = next((e for e in ordered if _is_foreclosure_stop(e)), None)
+    skipped = [e for e in ordered if e.get("skipped")]
+
     lines: list[str] = []
-    if yes:
+    if stop:
+        d = stop["rule"]["data"]
+        s = f"Foreclosure registration is required at the {stop['jurisdiction']} level for the mentioned property"
+        s += (f"; further VPR review was not done at the {names(skipped, 'and')} "
+              f"level{'s' if len(skipped) > 1 else ''}.") if skipped else "."
+        lines.append(s)
+        lines.append(f"{stop['jurisdiction']} - registration type: {_reg_type(d)}.")
+        if _condition(d):
+            lines.append(f"{stop['jurisdiction']} - required when: {_condition(d)}")
+        for e in yes:  # a more local level that required (vacant) registration before the stop
+            if e is not stop:
+                od = e["rule"]["data"]
+                lines.append(f"VPR is also required at the {e['jurisdiction']} level - registration type: {_reg_type(od)}.")
+                if _condition(od):
+                    lines.append(f"{e['jurisdiction']} - required when: {_condition(od)}")
+    elif yes:
         s = f"VPR is required at the {names(yes, 'and')} level{'s' if len(yes) > 1 else ''}"
         s += f" but is not required at the {names(no)} level" if no else ""
         lines.append(s + " for the mentioned property.")
         for e in yes:
             d = e["rule"]["data"]
             lines.append(f"{e['jurisdiction']} - registration type: {_reg_type(d)}.")
+            if _condition(d):
+                lines.append(f"{e['jurisdiction']} - required when: {_condition(d)}")
     elif not unclear:
         lines.append(f"VPR is not required at the {names(no)} level for the mentioned property.")
-    for e in unclear:
+    for e in ([] if stop else unclear):
         lines.append(f"VPR requirement at the {e['jurisdiction']} level could not be confirmed - manual verification needed.")
     for e in ordered:  # explain why a level does not apply (unincorporated, no county govt, city-only rule...)
-        if e["reason"] and e["flag"] == "No":
+        if e["reason"] and e["flag"] == "No" and not e.get("skipped"):
             lines.append(e["reason"])
     lines = list(dict.fromkeys(lines))  # DC gives the same reason for county and state
 
@@ -307,7 +343,7 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
         "Documents Required": _join(yes, lambda d: d.get("documents_required")),
         "Registration Method": _join(yes, method),
         "Registration Deadline": _join(yes, lambda d: d.get("registration_deadline")),
-        "Registration Trigger": _join(yes, lambda d: d.get("registration_trigger")),
+        "Condition (when required)": _join(yes, _condition),
         "Other Requirements": _join(yes, lambda d: d.get("other_requirements")),
         "Penalties": _join(yes, lambda d: d.get("penalties")),
         "Contact": _join(yes, lambda d: d.get("contact_info")),
@@ -351,11 +387,29 @@ def run_lookup(lookup_id: str) -> None:
                                   for j in jurs]
         push(geocode=loc)
 
-        with ThreadPoolExecutor(max_workers=get_settings().research_concurrency) as pool:
-            rules = list(pool.map(lambda j: get_or_research(j, loc, force, on_state), jurs))
+        # Review the most local level first (city -> county -> state). If a level requires foreclosure
+        # registration, the remaining levels are not reviewed (business rule).
+        ordered_jurs = sorted(jurs, key=lambda j: LEVELS.index(j["level"]))
+        first, rest = ordered_jurs[0], ordered_jurs[1:]
+        rules: dict[str, dict] = {first["key"]: get_or_research(first, loc, force, on_state)}
+        first_entry = _level_entry(first["level"], first, rules[first["key"]], loc)
+        if not _is_foreclosure_stop(first_entry) and rest:
+            with ThreadPoolExecutor(max_workers=get_settings().research_concurrency) as pool:
+                for j, r in zip(rest, pool.map(lambda j: get_or_research(j, loc, force, on_state), rest)):
+                    rules[j["key"]] = r
 
-        by_level = {j["level"]: (j, r) for j, r in zip(jurs, rules)}
-        levels = {lvl: _level_entry(lvl, *by_level.get(lvl, (None, None)), loc) for lvl in LEVELS}
+        by_level = {j["level"]: j for j in ordered_jurs}
+        levels: dict[str, dict] = {}
+        stop = None
+        for lvl in LEVELS:
+            j = by_level.get(lvl)
+            if stop and j:
+                levels[lvl] = _skipped_entry(lvl, j, stop)
+                on_state(j["key"], "skipped")
+                continue
+            levels[lvl] = _level_entry(lvl, j, rules.get(j["key"]) if j else None, loc)
+            if _is_foreclosure_stop(levels[lvl]):
+                stop = levels[lvl]
         result = _compose(inp, loc, levels)
         _set_progress(lookup_id, result=result, status="done", progress=None,
                       finished_at=datetime.now(timezone.utc))

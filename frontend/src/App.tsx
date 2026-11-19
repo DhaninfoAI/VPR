@@ -325,6 +325,7 @@ function ProgressView({ lookup }: { lookup: Lookup }) {
     waiting: "Queued",
     researching: "Researching the web – usually 1–3 minutes",
     cached: "Used saved rule",
+    skipped: "Not reviewed – foreclosure registration found at a more local level",
     done: "Researched",
     error: "Research failed",
   };
@@ -526,7 +527,7 @@ function Overview({ res, levels }: { res: NonNullable<Lookup["result"]>; levels:
                 <Row k="Registration fee" v={d.registration_fee} />
                 <Row k="Renewal" v={[d.renewal_fee, d.renewal_frequency].filter(Boolean).join(" · ")} />
                 <Row k="Deadline" v={d.registration_deadline} />
-                <Row k="Trigger" v={d.registration_trigger} />
+                <Row k="Required when" v={d.requirement_conditions || d.registration_trigger} />
                 <Row k="How to register" v={method(d)} />
               </dl>
               <div className="links">
@@ -596,6 +597,7 @@ function LevelDetail({ entry }: { entry: LevelEntry }) {
               <Row k="Vacant registration" v={d.vacant_registration_required} />
               <Row k="Foreclosure registration" v={d.foreclosure_registration_required} />
               {entry.level === "county" && <Row k="Applies inside cities" v={d.applies_in_incorporated_areas} />}
+              <Row k="Required when" v={d.requirement_conditions} />
               <Row k="Trigger" v={d.registration_trigger} />
               <Row k="Who must register" v={d.who_must_register} />
               <Row k="Deadline" v={d.registration_deadline} />

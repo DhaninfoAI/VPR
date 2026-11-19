@@ -5,6 +5,7 @@ export interface RuleData {
   vacant_registration_required: string;
   foreclosure_registration_required: string;
   applies_in_incorporated_areas: string;
+  requirement_conditions?: string | null;
   registration_trigger: string | null;
   who_must_register: string | null;
   registration_deadline: string | null;
@@ -46,6 +47,7 @@ export interface LevelEntry {
   flag: Flag;
   reason: string | null;
   rule: Rule | null;
+  skipped?: boolean;
 }
 
 export interface LookupInput {

@@ -28,6 +28,11 @@ RULE_SCHEMA: dict = {
             "enum": ["Yes", "No", "Unclear", "Not applicable"],
             "description": "Counties only: does the county rule also apply inside incorporated cities/towns?",
         },
+        "requirement_conditions": {
+            **NULLABLE_STR,
+            "description": "If registration is required only under conditions (vacant N days, notice of default, "
+                           "property type, owner type...), state those conditions plainly; null if unconditional.",
+        },
         "registration_trigger": {
             **NULLABLE_STR,
             "description": "When registration becomes required (e.g. vacant 30+ days, notice of default filed, foreclosure sale).",
@@ -83,7 +88,10 @@ How to research:
 - Never invent or guess URLs. Only output URLs you actually saw in search results. Use null when you could not find one.
 - Look for the registration form/portal and the current fee schedule (fees are often in a separate fee resolution or on the registry site).
 - If you searched the code and found no registration requirement, answer "No" and set ordinance_url to the jurisdiction's code of ordinances (or statutes) page so the operator can verify.
-- Use "Unclear" when sources conflict or you cannot reach the code; explain why in confidence_reason.
+- Conditional requirements count as "Yes": if the jurisdiction requires registration only when conditions are met (e.g. vacant
+  30+ days, a notice of default or lis pendens is filed, 1-4 unit residential only, out-of-area owner), answer "Yes" and
+  describe the conditions in requirement_conditions. Do not answer "No" or "Unclear" just because registration is conditional.
+- Use "Unclear" only when sources conflict or you cannot find/reach the code; explain why in confidence_reason.
 
 Field guidance:
 - registration_fee / renewal_fee: exact amounts and what they cover, e.g. "$250 per property (initial)". Mention late fees separately in penalties.
