@@ -27,13 +27,22 @@ class Settings(BaseSettings):
         "gocodebook.com,safeguardproperties.com,prochamps.com"
     )
 
-    @property
-    def allowed_domains(self) -> list[str]:
-        return [d.strip() for d in self.openai_allowed_domains.split(",") if d.strip()]
+    # Follow-up search of the jurisdiction's own website after filtered city/county research:
+    #   missing_links - only when the answer is "required" but the form/portal/ordinance link is missing (cheapest)
+    #   always        - also double-checks "not required" answers (catches programs the filter missed; costs
+    #                   about the same as running without the filter)
+    #   off           - never
+    openai_followup_mode: str = "missing_links"
+    openai_followup_max_tool_calls: int = 3
+
     # A saved jurisdiction rule older than this is re-researched on the next lookup.
     cache_ttl_days: int = 3
     # How many jurisdictions (state / county / city) are researched in parallel.
     research_concurrency: int = 3
+
+    @property
+    def allowed_domains(self) -> list[str]:
+        return [d.strip() for d in self.openai_allowed_domains.split(",") if d.strip()]
 
     @property
     def sqlalchemy_url(self) -> str:

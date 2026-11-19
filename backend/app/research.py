@@ -131,18 +131,125 @@ def research_jurisdiction(level: str, display_name: str, state_name: str, state_
     if settings.openai_max_tool_calls:
         kwargs["max_tool_calls"] = settings.openai_max_tool_calls  # caps web searches -> faster, cheaper
 
+    response, data, stats = _run(client, kwargs)
+    sources = _collect_sources(response)
+    log.info("Researched %s with %s: %s", display_name, response.model, stats)
+
+    if _needs_city_site_followup(settings, level, kwargs, data):
+        try:
+            fb_response, fb, fb_stats = _run(client, _followup_kwargs(settings, display_name, state_name, data))
+            _merge_followup(data, fb)
+            sources += [s for s in _collect_sources(fb_response) if s not in sources]
+            stats = {k: (stats.get(k) or 0) + (fb_stats.get(k) or 0) for k in stats} | {"followup": True}
+            log.info("Follow-up for %s: %s", display_name, fb_stats)
+        except Exception:  # the follow-up is a bonus; never lose the main result because of it
+            log.exception("Follow-up search failed for %s", display_name)
+
+    return {"data": data, "sources": sources, "model": response.model, "stats": stats}
+
+
+def _run(client: OpenAI, kwargs: dict):
     started = time.monotonic()
     response = client.responses.create(**kwargs)
     data = json.loads(response.output_text)
     usage = getattr(response, "usage", None)
+    details = getattr(usage, "input_tokens_details", None)
     stats = {
         "seconds": round(time.monotonic() - started, 1),
         "web_searches": sum(1 for i in response.output or [] if getattr(i, "type", None) == "web_search_call"),
         "input_tokens": getattr(usage, "input_tokens", None),
+        "cached_input_tokens": getattr(details, "cached_tokens", None),
         "output_tokens": getattr(usage, "output_tokens", None),
     }
-    log.info("Researched %s with %s: %s", display_name, response.model, stats)
-    return {"data": data, "sources": _collect_sources(response), "model": response.model, "stats": stats}
+    return response, data, stats
+
+
+# --------------------------------------------------------------------------- follow-up search
+
+FOLLOWUP_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "vacant_registration_required": YES_NO,
+        "foreclosure_registration_required": YES_NO,
+        "evidence": {**NULLABLE_STR, "description": "One sentence quoting/describing what the official page says."},
+        "official_website": NULLABLE_STR,
+        "registration_form_url": NULLABLE_STR,
+        "registration_portal_url": NULLABLE_STR,
+        "registration_fee": NULLABLE_STR,
+        "renewal_fee": NULLABLE_STR,
+        "ordinance_url": NULLABLE_STR,
+        "source_urls": {"type": "array", "items": {"type": "string"}},
+    },
+}
+FOLLOWUP_SCHEMA["required"] = list(FOLLOWUP_SCHEMA["properties"].keys())
+
+FOLLOWUP_INSTRUCTIONS = """You check one jurisdiction's OFFICIAL website for a vacant / abandoned / foreclosed residential property
+registration program (registration by owners, lenders or servicers). Search the government's own website and its
+registration vendor's site. Answer Yes only if an official page shows such a program exists; No if you found the
+official site and it has none; Unclear otherwise. Also find the registration form (PDF or page), the online registration
+portal, and the CURRENT registration and renewal fee (this year's fee schedule if possible).
+ordinance_url: the ordinance section itself on a code library or the government site, or null.
+Only output URLs you actually saw in search results; use null when not found. Do not guess."""
+
+
+def _needs_city_site_followup(settings, level: str, kwargs: dict, data: dict) -> bool:
+    """Filtered city/county research cannot read the jurisdiction's own .gov site, so it can miss a program
+    entirely or miss its form/portal/current fee. Check the official site unless the answer is already complete."""
+    mode = (settings.openai_followup_mode or "off").lower()
+    if mode == "off" or level == "state" or "filters" not in kwargs["tools"][0]:
+        return False
+    required = "Yes" in (data.get("vacant_registration_required"), data.get("foreclosure_registration_required"))
+    complete = bool((data.get("registration_form_url") or data.get("registration_portal_url")) and data.get("ordinance_url"))
+    if mode == "always":
+        return not (required and complete)
+    return required and not complete  # missing_links
+
+
+def _followup_kwargs(settings, display_name: str, state_name: str, data: dict) -> dict:
+    found = "found a program: " + (data.get("ordinance_name") or "name unknown") if "Yes" in (
+        data.get("vacant_registration_required"), data.get("foreclosure_registration_required")) else "found no program"
+    kwargs: dict = dict(
+        model=settings.openai_model,
+        instructions=FOLLOWUP_INSTRUCTIONS,
+        input=(f"Jurisdiction: {display_name}, {state_name}. A search of code libraries {found}. "
+               f"Check the official website. Today's date: {date.today().isoformat()}."),
+        tools=[{"type": "web_search", "search_context_size": "low"}],  # unfiltered, but small and capped
+        include=["web_search_call.action.sources"],
+        text={"format": {"type": "json_schema", "name": "vpr_followup", "schema": FOLLOWUP_SCHEMA, "strict": True}},
+        max_tool_calls=settings.openai_followup_max_tool_calls,
+    )
+    if settings.openai_reasoning_effort:
+        kwargs["reasoning"] = {"effort": settings.openai_reasoning_effort}
+    return kwargs
+
+
+def _merge_followup(data: dict, fb: dict) -> None:
+    # Only ever upgrade to "Yes" when the official site shows a program; never downgrade a "Yes".
+    upgraded = []
+    for field in ("vacant_registration_required", "foreclosure_registration_required"):
+        if fb.get(field) == "Yes" and data.get(field) != "Yes":
+            data[field] = "Yes"
+            upgraded.append(field.split("_")[0])
+    if upgraded:
+        data["confidence"] = "Medium"
+        data["confidence_reason"] = (f"Code-library search missed it; the official website shows a {' and '.join(upgraded)} "
+                                     f"registration program. {fb.get('evidence') or ''}").strip()
+        if not data.get("summary") or "no " in (data.get("summary") or "").lower()[:60]:
+            data["summary"] = fb.get("evidence") or data.get("summary")
+    for field in ("registration_form_url", "registration_portal_url", "ordinance_url", "renewal_fee"):
+        if fb.get(field) and not data.get(field):
+            data[field] = fb[field]
+    if fb.get("registration_fee"):  # the follow-up targets the official, current fee schedule
+        old = data.get("registration_fee")
+        data["registration_fee"] = fb["registration_fee"] + (
+            f" (earlier source: {old})" if old and old != fb["registration_fee"] else "")
+    if fb.get("official_website"):
+        data["additional_links"] = (data.get("additional_links") or []) + [
+            {"label": "Official website", "url": fb["official_website"]}]
+    data["source_urls"] = list(dict.fromkeys((data.get("source_urls") or []) + (fb.get("source_urls") or [])))
+    if data.get("registration_method") in (None, "Unknown") and data.get("registration_portal_url"):
+        data["registration_method"] = "Online portal"
 
 
 def _web_search_tool(settings, level: str, extra_domains: list[str]) -> dict:
