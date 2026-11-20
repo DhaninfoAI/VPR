@@ -69,7 +69,7 @@ def _normalize(d: dict | None) -> dict | None:
     if not d:
         return d
     d = dict(d)
-    extra = list(d.get("additional_links") or [])
+    extra = [l if isinstance(l, dict) else {"label": "Link", "url": str(l)} for l in (d.get("additional_links") or [])]
     for field, label in URL_FIELDS.items():
         urls = URL_RE.findall(d.get(field) or "")
         d[field] = urls[0] if urls else None

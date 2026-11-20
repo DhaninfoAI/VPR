@@ -287,6 +287,35 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 .icon-link { color: var(--muted); display: inline-flex; }
 .icon-link:hover { color: var(--accent); }
 
+/* ---------- bulk upload */
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center;
+  border: 1.5px dashed var(--border-strong); border-radius: 10px; padding: 36px 20px; background: var(--surface-2);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.dropzone:hover, .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone.busy { cursor: progress; opacity: .7; }
+.dropzone .feature-icon { margin-bottom: 4px; }
+.dropzone strong { font-size: 15px; }
+.format-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: 20px; }
+@media (max-width: 860px) { .format-grid { grid-template-columns: 1fr; } }
+.format-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.format-table th, .format-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.format-table th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+.format-table code { font-family: inherit; font-weight: 600; color: var(--text); }
+.rules { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
+.rules li { margin-bottom: 6px; }
+.progress { height: 6px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; margin: 14px 0 4px; }
+.progress > div { height: 100%; background: var(--accent); transition: width .4s; }
+.counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.count-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 99px; padding: 3px 10px 3px 4px; font-size: 12.5px; color: var(--text-2); background: var(--surface); cursor: pointer; }
+.count-chip.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus); }
+.count-chip .badge { padding: 1px 7px; }
+.row-error { color: var(--red); font-size: 12.5px; }
+.back-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 0; margin-bottom: 14px; }
+.back-link:hover { color: var(--text); }
+.table td.num { color: var(--muted); font-variant-numeric: tabular-nums; width: 1%; white-space: nowrap; }
+
 /* ---------- theme switch */
 .theme-switch { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); width: fit-content; }
 .theme-switch button {

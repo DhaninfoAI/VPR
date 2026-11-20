@@ -1,22 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, Flag, LevelEntry, Lookup, Rule, RuleData, SavedRule } from "./api";
+import { api, Batch, BatchRow, Flag, LevelEntry, Lookup, Rule, RuleData, SavedRule } from "./api";
 import { Icon } from "./icons";
 
-type Page = "lookup" | "history" | "saved";
+type Page = "lookup" | "bulk" | "history" | "saved";
 
 const NAV: { id: Page; label: string; icon: string }[] = [
   { id: "lookup", label: "New lookup", icon: "search" },
+  { id: "bulk", label: "Bulk upload", icon: "upload" },
   { id: "history", label: "History", icon: "clock" },
   { id: "saved", label: "Jurisdictions", icon: "map" },
 ];
 
 export default function App() {
-  const [page, setPage] = useState<Page>("lookup");
+  const [page, setPage] = useState<Page>(() => (location.hash.startsWith("#/bulk") ? "bulk" : "lookup"));
   const [openId, setOpenId] = useState<string | null>(() => location.hash.match(/^#\/lookup\/(.+)$/)?.[1] ?? null);
 
   useEffect(() => {
-    if (openId) history.replaceState(null, "", `#/lookup/${openId}`);
-  }, [openId]);
+    if (page === "lookup") history.replaceState(null, "", openId ? `#/lookup/${openId}` : location.pathname);
+    if (page !== "lookup" && page !== "bulk") history.replaceState(null, "", location.pathname);
+  }, [openId, page]);
 
   return (
     <div className="app">
@@ -43,6 +45,7 @@ export default function App() {
 
       <div className="main">
         {page === "lookup" && <LookupPage openId={openId} setOpenId={setOpenId} />}
+        {page === "bulk" && <BulkPage />}
         {page === "history" && (
           <HistoryPage
             onOpen={(id) => {
@@ -144,32 +147,11 @@ function LookupPage({ openId, setOpenId }: { openId: string | null; setOpenId: (
   const [form, setForm] = useState({ address: "", city: "", state: "", zip: "", county: "", force_refresh: false });
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [lookup, setLookup] = useState<Lookup | null>(null);
-  const timer = useRef<number | null>(null);
+  const [lookup, setLookup] = usePolledLookup(openId, setErr);
 
   useEffect(() => {
     api.states().then(setStates).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!openId) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const lk = await api.get(openId);
-        if (cancelled) return;
-        setLookup(lk);
-        if (lk.status === "pending" || lk.status === "running") timer.current = window.setTimeout(poll, 2000);
-      } catch (e: any) {
-        if (!cancelled) setErr(e.message);
-      }
-    };
-    poll();
-    return () => {
-      cancelled = true;
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [openId]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,6 +222,32 @@ function LookupPage({ openId, setOpenId }: { openId: string | null; setOpenId: (
       {lookup && <LookupView lookup={lookup} />}
     </>
   );
+}
+
+/** Load a lookup and keep refreshing it while it is still running. */
+function usePolledLookup(id: string | null, onError: (msg: string) => void) {
+  const [lookup, setLookup] = useState<Lookup | null>(null);
+  const timer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const lk = await api.get(id);
+        if (cancelled) return;
+        setLookup(lk);
+        if (lk.status === "pending" || lk.status === "running") timer.current = window.setTimeout(poll, 2000);
+      } catch (e: any) {
+        if (!cancelled) onError(e.message);
+      }
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [id]);
+  return [lookup, setLookup] as const;
 }
 
 function Field({ label, hint, className, children }: { label: string; hint?: string; className?: string; children: React.ReactNode }) {
@@ -711,6 +719,384 @@ function CopyButton({ text, label, small }: { text: string; label: string; small
       <Icon name={done ? "check" : "copy"} />
       {done ? "Copied" : label}
     </button>
+  );
+}
+
+/* ------------------------------------------------------------------ bulk upload */
+
+function batchHash() {
+  const m = location.hash.match(/^#\/bulk\/([^/]+)(?:\/row\/(.+))?$/);
+  return { batch: m?.[1] ?? null, row: m?.[2] ?? null };
+}
+
+function BulkPage() {
+  const [batchId, setBatchId] = useState<string | null>(() => batchHash().batch);
+  const [rowId, setRowId] = useState<string | null>(() => batchHash().row);
+
+  useEffect(() => {
+    const h = batchId ? `#/bulk/${batchId}${rowId ? `/row/${rowId}` : ""}` : "#/bulk";
+    history.replaceState(null, "", h);
+  }, [batchId, rowId]);
+
+  if (batchId && rowId) return <BulkRowView lookupId={rowId} onBack={() => setRowId(null)} />;
+  if (batchId)
+    return <BatchView id={batchId} onOpenRow={setRowId} onBack={() => setBatchId(null)} />;
+  return <UploadView onCreated={setBatchId} />;
+}
+
+function UploadView({ onCreated }: { onCreated: (id: string) => void }) {
+  const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Batch[] | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.batches().then(setRecent).catch(() => setRecent([]));
+  }, []);
+
+  const send = async (file: File | undefined) => {
+    if (!file || busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const b = await api.uploadBatch(file);
+      onCreated(b.id);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <PageHead
+        title="Bulk upload"
+        sub="Upload an Excel or CSV file of addresses. Each row is looked up the same way as a single lookup."
+        actions={
+          <a className="btn" href="api/batches/template.xlsx">
+            <Icon name="download" /> Download template
+          </a>
+        }
+      />
+
+      <div className="panel">
+        <div
+          className={`dropzone ${over ? "over" : ""} ${busy ? "busy" : ""}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => input.current?.click()}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setOver(true);
+          }}
+          onDragLeave={() => setOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            send(e.dataTransfer.files[0]);
+          }}
+        >
+          <div className="feature-icon">
+            {busy ? <span className="step-icon spin" /> : <Icon name="upload" size={18} />}
+          </div>
+          <strong>{busy ? "Checking file…" : "Drop your file here or click to choose"}</strong>
+          <span className="muted small">.xlsx or .csv · up to 500 addresses</span>
+          <input
+            ref={input}
+            type="file"
+            accept=".xlsx,.xlsm,.csv"
+            hidden
+            onChange={(e) => send(e.target.files?.[0])}
+          />
+        </div>
+        {err && (
+          <div className="alert">
+            <strong>File not accepted.</strong> {err}
+          </div>
+        )}
+
+        <div className="format-grid">
+          <div>
+            <div className="section-title">File format</div>
+            <table className="format-table">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>Required</th>
+                  <th>Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><code>Address</code></td><td>Yes</td><td>44 E Downer Pl</td></tr>
+                <tr><td><code>City</code></td><td>Yes</td><td>Aurora</td></tr>
+                <tr><td><code>State</code></td><td>Yes</td><td>IL or Illinois</td></tr>
+                <tr><td><code>ZIP</code></td><td>No</td><td>60505</td></tr>
+                <tr><td><code>County</code></td><td>No</td><td>Kane (detected automatically)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div className="section-title">Rules</div>
+            <ul className="rules">
+              <li>The first row holds the column names. Case and spacing don't matter, and common variants work (Street Address, Zip Code, ST).</li>
+              <li>Other columns, such as Loan # or Reference, are kept and copied into the export.</li>
+              <li>If Address, City or State is missing, or the file can't be read, the whole file is rejected with the reason.</li>
+              <li>A row with a problem (empty address, unknown state, bad ZIP) is marked Invalid; the other rows still run.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {recent && recent.length > 0 && (
+        <div className="panel flush" style={{ marginTop: 20 }}>
+          <div className="table-tools">
+            <strong>Recent uploads</strong>
+          </div>
+          <div className="scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Rows</th>
+                  <th>Required</th>
+                  <th>Not required</th>
+                  <th>Needs review</th>
+                  <th>Status</th>
+                  <th>Uploaded</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent.map((b) => (
+                  <tr key={b.id} className="clickable" onClick={() => onCreated(b.id)}>
+                    <td className="strong">{b.filename}</td>
+                    <td>{b.counts.total}</td>
+                    <td>{b.counts.required}</td>
+                    <td>{b.counts.not_required}</td>
+                    <td>{b.counts.review}</td>
+                    <td>
+                      {b.running ? (
+                        <Badge flag="Unclear">Running {b.counts.done + b.counts.error}/{b.counts.total - b.counts.invalid}</Badge>
+                      ) : b.counts.error > 0 ? (
+                        <Badge flag="Error">{b.counts.error} failed</Badge>
+                      ) : (
+                        <Badge flag="No">Finished</Badge>
+                      )}
+                    </td>
+                    <td className="muted nowrap">{new Date(b.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+type RowFilter = "all" | "required" | "not_required" | "review" | "pending" | "error" | "invalid";
+
+function rowGroup(r: BatchRow): RowFilter {
+  if (r.status === "invalid") return "invalid";
+  if (r.status === "error") return "error";
+  if (r.status !== "done") return "pending";
+  const f = ["City Wise", "County Wise", "State Wise"].map((k) => r.summary[k]);
+  if (f.includes("Yes")) return "required";
+  if (f.includes("Unclear") || f.includes("Error")) return "review";
+  return "not_required";
+}
+
+function BatchView({ id, onOpenRow, onBack }: { id: string; onOpenRow: (lookupId: string) => void; onBack: () => void }) {
+  const [b, setB] = useState<Batch | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [filter, setFilter] = useState<RowFilter>("all");
+  const [q, setQ] = useState("");
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let t: number | undefined;
+    const poll = async () => {
+      try {
+        const nb = await api.batch(id);
+        if (cancelled) return;
+        setB(nb);
+        if (nb.running) t = window.setTimeout(poll, 3000);
+      } catch (e: any) {
+        if (!cancelled) setErr(e.message);
+      }
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [id, tick]);
+
+  const rows = useMemo(() => {
+    const all = b?.rows ?? [];
+    const ql = q.toLowerCase();
+    return all.filter(
+      (r) =>
+        (filter === "all" || rowGroup(r) === filter) &&
+        (!ql || `${r.input.address} ${r.input.city} ${r.input.state} ${Object.values(r.extra).join(" ")}`.toLowerCase().includes(ql))
+    );
+  }, [b, filter, q]);
+
+  if (err) return <div className="alert">{err}</div>;
+  if (!b) return <div className="muted">Loading…</div>;
+
+  const c = b.counts;
+  const runnable = c.total - c.invalid;
+  const finished = c.done + c.error;
+  const firstExtra = b.extra_columns[0];
+  const chips: { id: RowFilter; label: string; n: number; flag: string }[] = [
+    { id: "all", label: "All rows", n: c.total, flag: "" },
+    { id: "required", label: "Required", n: c.required, flag: "Yes" },
+    { id: "not_required", label: "Not required", n: c.not_required, flag: "No" },
+    { id: "review", label: "Needs review", n: c.review, flag: "Unclear" },
+    { id: "pending", label: "Running", n: c.pending, flag: "Unclear" },
+    { id: "error", label: "Failed", n: c.error, flag: "Error" },
+    { id: "invalid", label: "Invalid", n: c.invalid, flag: "Error" },
+  ];
+
+  return (
+    <>
+      <button className="back-link" onClick={onBack}>
+        <Icon name="back" size={14} /> All uploads
+      </button>
+      <div className="panel">
+        <div className="panel-head">
+          <div>
+            <div className="overline">Bulk upload</div>
+            <h2>{b.filename}</h2>
+            <div className="muted small">
+              Uploaded {new Date(b.created_at).toLocaleString()} ·{" "}
+              {b.running ? `${finished} of ${runnable} looked up` : `${finished} looked up`}
+            </div>
+          </div>
+          <div className="head-actions">
+            {c.error > 0 && !b.running && (
+              <button
+                className="btn"
+                onClick={() => api.retryBatch(b.id).then(() => setTick((x) => x + 1)).catch((e) => setErr(e.message))}
+              >
+                <Icon name="refresh" /> Retry {c.error} failed
+              </button>
+            )}
+            <a className="btn primary" href={`api/batches/${b.id}/export.xlsx`}>
+              <Icon name="download" /> Export Excel
+            </a>
+          </div>
+        </div>
+        {b.running && (
+          <div className="progress" aria-label="Progress">
+            <div style={{ width: `${runnable ? Math.round((finished / runnable) * 100) : 100}%` }} />
+          </div>
+        )}
+        <div className="counts">
+          {chips
+            .filter((ch) => ch.id === "all" || ch.n > 0)
+            .map((ch) => (
+              <button
+                key={ch.id}
+                className={`count-chip ${filter === ch.id ? "active" : ""}`}
+                onClick={() => setFilter(ch.id)}
+              >
+                {ch.flag ? <Badge flag={ch.flag}>{ch.n}</Badge> : <span className="badge gray">{ch.n}</span>}
+                {ch.label}
+              </button>
+            ))}
+        </div>
+      </div>
+
+      <div className="panel flush" style={{ marginTop: 20 }}>
+        <div className="table-tools">
+          <div className="search-input">
+            <Icon name="search" />
+            <input placeholder="Search address or reference" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <span className="muted small">{rows.length} rows · click a row to open it</span>
+        </div>
+        <div className="scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Row</th>
+                {firstExtra && <th>{firstExtra}</th>}
+                <th>Property</th>
+                <th>County</th>
+                <th>City wise</th>
+                <th>County wise</th>
+                <th>State wise</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const open = r.lookup_id && (r.status === "done" || r.status === "error" || r.status === "running");
+                return (
+                  <tr
+                    key={r.row}
+                    className={open ? "clickable" : ""}
+                    onClick={() => open && onOpenRow(r.lookup_id!)}
+                  >
+                    <td className="num">{r.row}</td>
+                    {firstExtra && <td className="nowrap">{r.extra[firstExtra] || "—"}</td>}
+                    <td className="strong">
+                      {r.input.address}, {r.input.city}, {r.input.state}
+                      {r.input.zip ? ` ${r.input.zip}` : ""}
+                    </td>
+                    <td>{r.summary["County"] || "—"}</td>
+                    {r.status === "done" ? (
+                      <>
+                        <td><Badge flag={r.summary["City Wise"] ?? ""} /></td>
+                        <td><Badge flag={r.summary["County Wise"] ?? ""} /></td>
+                        <td><Badge flag={r.summary["State Wise"] ?? ""} /></td>
+                      </>
+                    ) : (
+                      <td colSpan={3}>
+                        {r.status === "invalid" ? (
+                          <span className="row-error">Invalid row: {r.error}</span>
+                        ) : r.status === "error" ? (
+                          <>
+                            <Badge flag="Error">Failed</Badge> <span className="row-error">{r.error}</span>
+                          </>
+                        ) : (
+                          <Badge flag="Unclear">{r.status === "running" ? "Looking up…" : "Queued"}</Badge>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={firstExtra ? 7 : 6} className="empty-row">No rows match.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function BulkRowView({ lookupId, onBack }: { lookupId: string; onBack: () => void }) {
+  const [err, setErr] = useState<string | null>(null);
+  const [lookup] = usePolledLookup(lookupId, setErr);
+  return (
+    <>
+      <button className="back-link" onClick={onBack}>
+        <Icon name="back" size={14} /> Back to upload results
+      </button>
+      {err && <div className="alert">{err}</div>}
+      {lookup ? <LookupView lookup={lookup} /> : !err && <div className="muted">Loading…</div>}
+    </>
   );
 }
 

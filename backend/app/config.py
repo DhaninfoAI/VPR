@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     cache_ttl_days: int = 3
     # How many jurisdictions (state / county / city) are researched in parallel.
     research_concurrency: int = 3
+    # Bulk upload: addresses looked up at the same time, and the largest file accepted.
+    batch_concurrency: int = 4
+    batch_max_rows: int = 500
 
     @property
     def allowed_domains(self) -> list[str]:

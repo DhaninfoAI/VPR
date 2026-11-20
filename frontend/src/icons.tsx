@@ -23,6 +23,19 @@ const paths: Record<string, JSX.Element> = {
       <path d="M5 20h14" />
     </>
   ),
+  upload: (
+    <>
+      <path d="M12 16V5M7 10l5-5 5 5" />
+      <path d="M5 20h14" />
+    </>
+  ),
+  back: <path d="M15 5l-7 7 7 7" />,
+  table: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10" />
+    </>
+  ),
   copy: (
     <>
       <rect x="9" y="9" width="11" height="11" rx="2" />

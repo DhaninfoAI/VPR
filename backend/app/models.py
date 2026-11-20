@@ -59,6 +59,20 @@ class VprRule(Base):
     __table_args__ = (Index("ix_vpr_rules_jurisdiction_time", "jurisdiction_id", "researched_at"),)
 
 
+class Batch(Base):
+    """One bulk upload. `rows` keeps every data row of the file in order:
+    {"row": <sheet row number>, "input": {...} | None, "extra": {...}, "lookup_id": str | None, "error": str | None}.
+    Rows that failed validation have an `error` and no lookup."""
+
+    __tablename__ = "vpr_batches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    extra_columns: Mapped[list] = mapped_column(JSONB, default=list)  # other columns of the file, kept for export
+    rows: Mapped[list] = mapped_column(JSONB)
+
+
 class Lookup(Base):
     """One address lookup requested from the UI."""
 

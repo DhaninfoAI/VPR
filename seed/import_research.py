@@ -51,9 +51,14 @@ def main(check_links: bool = True) -> None:
     init_db()
     files = sorted((ROOT / "research").glob("*.json"))
     added = skipped = 0
+    latest: dict[str, dict] = {}  # later files override earlier ones for the same jurisdiction
     for path in files:
         entries = json.loads(path.read_text(encoding="utf-8"))
+        print(f"{path.name}: {len(entries)} entries")
         for e in entries:
+            latest[key_for(e)] = e
+    for path in [None]:
+        for e in latest.values():
             st = e["state"].upper()
             assert st in STATES, f"{path.name}: bad state {st}"
             data = complete(e["data"])
@@ -82,7 +87,6 @@ def main(check_links: bool = True) -> None:
                     sources=[{"url": u, "title": None} for u in data["source_urls"]], link_checks=checks,
                 ))
                 added += 1
-        print(f"{path.name}: {len(entries)} entries")
     print(f"added {added}, unchanged {skipped}")
 
 

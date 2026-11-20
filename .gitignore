@@ -9,3 +9,11 @@ seed/jurisdictions.json
 *.xlsx
 .env
 *.tsbuildinfo
+
+# Client municipality list work files - keep local
+seed/muni_*
+seed/build_muni_*
+seed/research/2*_muni_*
+seed/muni_slices/
+seed/research/3*_*.json
+seed/unverified/

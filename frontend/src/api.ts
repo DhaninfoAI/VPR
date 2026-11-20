@@ -101,6 +101,39 @@ export interface SavedRule {
   researched_at: string;
 }
 
+export type BatchRowStatus = "invalid" | "pending" | "running" | "done" | "error";
+
+export interface BatchCounts {
+  total: number;
+  invalid: number;
+  pending: number;
+  done: number;
+  error: number;
+  required: number;
+  not_required: number;
+  review: number;
+}
+
+export interface BatchRow {
+  row: number;
+  input: LookupInput;
+  extra: Record<string, string>;
+  lookup_id: string | null;
+  status: BatchRowStatus;
+  error: string | null;
+  summary: Record<string, string | null>;
+}
+
+export interface Batch {
+  id: string;
+  filename: string;
+  created_at: string;
+  extra_columns: string[];
+  counts: BatchCounts;
+  running: boolean;
+  rows?: BatchRow[];
+}
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   if (!r.ok) {
@@ -127,6 +160,15 @@ export const api = {
     }),
   get: (id: string) => req<Lookup>(`api/lookups/${id}`),
   list: () => req<Lookup[]>("api/lookups?limit=50"),
+  uploadBatch: (file: File) =>
+    req<Batch>(`api/batches?filename=${encodeURIComponent(file.name)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: file,
+    }),
+  batches: () => req<Batch[]>("api/batches"),
+  batch: (id: string) => req<Batch>(`api/batches/${id}`),
+  retryBatch: (id: string) => req<{ restarted: number }>(`api/batches/${id}/retry`, { method: "POST" }),
   jurisdictions: (state?: string) =>
     req<SavedRule[]>(`api/jurisdictions${state ? `?state=${state}` : ""}`),
 };
