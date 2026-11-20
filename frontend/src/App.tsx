@@ -24,10 +24,11 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="mark">V</div>
-          <div>
+          <img className="brand-logo on-light" src="dhaninfo-logo.png" alt="DhanInfo" />
+          <img className="brand-logo on-dark" src="dhaninfo-logo-dark.png" alt="DhanInfo" />
+          <div className="brand-product">
             <div className="brand-name">VPR Desk</div>
-            <div className="brand-sub">Registration lookup</div>
+            <div className="brand-sub">Vacant property registration</div>
           </div>
         </div>
         <nav className="nav">
@@ -133,11 +134,21 @@ function PageHead({ title, sub, actions }: { title: string; sub: string; actions
 
 /* ------------------------------------------------------------------ badges */
 
-const FLAG_TEXT: Record<Flag, string> = { Yes: "Required", No: "Not required", Unclear: "Needs review", Error: "Failed" };
+const FLAG_TEXT: Record<string, string> = {
+  Yes: "Required",
+  "Yes (conditional)": "Required with condition",
+  No: "Not required",
+  Error: "Could not be checked",
+};
 
 function Badge({ flag, children }: { flag: string; children?: React.ReactNode }) {
-  const tone = ({ Yes: "red", No: "green", Unclear: "amber", Error: "gray" } as Record<string, string>)[flag] ?? "gray";
-  return <span className={`badge ${tone}`}>{children ?? FLAG_TEXT[flag as Flag] ?? flag}</span>;
+  const tone = ({ Yes: "red", "Yes (conditional)": "amber", No: "green", Error: "gray" } as Record<string, string>)[flag] ?? "gray";
+  return <span className={`badge ${tone}`}>{children ?? FLAG_TEXT[flag] ?? flag}</span>;
+}
+
+/** Sheet-style flag for a level: conditional requirements get their own label. */
+function levelFlag(e: LevelEntry): string {
+  return e.flag === "Yes" && e.condition ? "Yes (conditional)" : e.flag;
 }
 
 /* ------------------------------------------------------------------ lookup */
@@ -208,7 +219,7 @@ function LookupPage({ openId, setOpenId }: { openId: string | null; setOpenId: (
         <div className="search-foot">
           <label className="toggle">
             <input type="checkbox" checked={form.force_refresh} onChange={set("force_refresh")} />
-            <span>Ignore saved rules and research again</span>
+            <span>Refresh requirements (takes longer)</span>
           </label>
           <button className="btn primary" disabled={submitting || busy}>
             <Icon name="search" />
@@ -266,7 +277,7 @@ function EmptyState() {
   const items = [
     { icon: "pin", t: "Real jurisdiction", d: "The address is matched with the US Census to find the true county and city limits." },
     { icon: "file", t: "Everything to register", d: "Ordinance, form link, fees, renewal, deadline and the full documents checklist." },
-    { icon: "database", t: "Saved for next time", d: "Each city, county and state is researched once and reused for 3 days." },
+    { icon: "database", t: "Nationwide coverage", d: "City, county and state rules for all 50 states and Washington, DC." },
   ];
   return (
     <div className="feature-grid">
@@ -331,11 +342,11 @@ function ProgressView({ lookup }: { lookup: Lookup }) {
   const geocoded = !!steps && steps.phase !== "geocoding";
   const stateText: Record<string, string> = {
     waiting: "Queued",
-    researching: "Researching the web – usually 1–3 minutes",
-    cached: "Used saved rule",
+    researching: "Checking local ordinances – usually 1–3 minutes",
+    cached: "Checked",
     skipped: "Not reviewed – foreclosure registration found at a more local level",
-    done: "Researched",
-    error: "Research failed",
+    done: "Checked",
+    error: "Could not be checked",
   };
   return (
     <div className="panel">
@@ -424,7 +435,6 @@ function LookupView({ lookup }: { lookup: Lookup }) {
               <span className="meta-item">
                 {geo?.municipality ? `${geo.municipality.label} of ${geo.municipality.name}` : "Unincorporated area"}
               </span>
-              <span className="meta-item">Confidence: {res.row["Confidence"]}</span>
             </div>
           </div>
           <div className="head-actions">
@@ -481,7 +491,9 @@ function Metric({ entry }: { entry: LevelEntry }) {
     : "";
   const sub =
     entry.flag === "Yes"
-      ? [type, d?.registration_fee].filter(Boolean).join(" · ")
+      ? entry.condition
+        ? `Condition: ${entry.condition}`
+        : [type, d?.registration_fee].filter(Boolean).join(" · ")
       : entry.flag === "No" && entry.reason
         ? entry.reason
         : "";
@@ -489,7 +501,7 @@ function Metric({ entry }: { entry: LevelEntry }) {
     <div className="metric">
       <div className="metric-label">{LEVEL_LABEL[entry.level]}</div>
       <div className="metric-name">{entry.jurisdiction ?? "Not applicable"}</div>
-      <Badge flag={entry.flag} />
+      <Badge flag={levelFlag(entry)} />
       {sub && <div className="metric-sub">{sub}</div>}
     </div>
   );
@@ -514,7 +526,7 @@ function Overview({ res, levels }: { res: NonNullable<Lookup["result"]>; levels:
           <h3>No registration required</h3>
           <p className="muted">
             None of the jurisdictions covering this address require vacant or foreclosure registration. Open the
-            jurisdiction tabs to see the ordinance checked and the sources.
+            jurisdiction tabs to see the ordinance details.
           </p>
         </div>
       )}
@@ -528,22 +540,27 @@ function Overview({ res, levels }: { res: NonNullable<Lookup["result"]>; levels:
                 <div className="overline">{LEVEL_LABEL[e.level]} requirement</div>
                 <h3>{e.jurisdiction}</h3>
               </div>
-              <Badge flag="Yes" />
+              <Badge flag={levelFlag(e)} />
             </div>
+            {e.condition && (
+              <div className="callout">
+                <strong>Required with condition:</strong> {e.condition}
+              </div>
+            )}
             <div className="two-col">
               <dl className="desc">
                 <Row k="Registration fee" v={d.registration_fee} />
                 <Row k="Renewal" v={[d.renewal_fee, d.renewal_frequency].filter(Boolean).join(" · ")} />
                 <Row k="Deadline" v={d.registration_deadline} />
-                <Row k="Required when" v={d.requirement_conditions || d.registration_trigger} />
+                <Row k="Required when" v={d.registration_trigger} />
                 <Row k="How to register" v={method(d)} />
               </dl>
               <div className="links">
-                <LinkCard label="Ordinance" sub={d.ordinance_name} url={d.ordinance_url} checks={e.rule!.link_checks} />
-                <LinkCard label="Registration form" url={d.registration_form_url} checks={e.rule!.link_checks} />
-                <LinkCard label="Registration portal" url={d.registration_portal_url} checks={e.rule!.link_checks} />
+                <LinkCard label="Ordinance" sub={d.ordinance_name} url={d.ordinance_url} />
+                <LinkCard label="Registration form" url={d.registration_form_url} />
+                <LinkCard label="Registration portal" url={d.registration_portal_url} />
                 {(d.additional_links ?? []).map((l) => (
-                  <LinkCard key={l.url} label={l.label} url={l.url} checks={e.rule!.link_checks} />
+                  <LinkCard key={l.url} label={l.label} url={l.url} />
                 ))}
               </div>
             </div>
@@ -588,15 +605,16 @@ function LevelDetail({ entry }: { entry: LevelEntry }) {
         <div>
           <div className="overline">{LEVEL_LABEL[entry.level]}</div>
           <h3>{entry.jurisdiction}</h3>
-          <div className="muted small">
-            {r.from_cache ? "Saved rule" : "Researched now"} · {new Date(r.researched_at).toLocaleString()}
-            {r.model ? ` · ${r.model}` : ""}
-          </div>
+          <div className="muted small">Last updated {new Date(r.researched_at).toLocaleDateString()}</div>
         </div>
-        <Badge flag={entry.flag} />
+        <Badge flag={levelFlag(entry)} />
       </div>
       {entry.reason && <div className="callout">{entry.reason}</div>}
-      {r.error && <div className="alert">{r.error}</div>}
+      {entry.condition && (
+        <div className="callout">
+          <strong>Required with condition:</strong> {entry.condition}
+        </div>
+      )}
       {d && (
         <>
           <p className="summary">{d.summary}</p>
@@ -605,7 +623,6 @@ function LevelDetail({ entry }: { entry: LevelEntry }) {
               <Row k="Vacant registration" v={d.vacant_registration_required} />
               <Row k="Foreclosure registration" v={d.foreclosure_registration_required} />
               {entry.level === "county" && <Row k="Applies inside cities" v={d.applies_in_incorporated_areas} />}
-              <Row k="Required when" v={d.requirement_conditions} />
               <Row k="Trigger" v={d.registration_trigger} />
               <Row k="Who must register" v={d.who_must_register} />
               <Row k="Deadline" v={d.registration_deadline} />
@@ -616,11 +633,11 @@ function LevelDetail({ entry }: { entry: LevelEntry }) {
               <Row k="Contact" v={d.contact_info} />
             </dl>
             <div className="links">
-              <LinkCard label="Ordinance" sub={d.ordinance_name} url={d.ordinance_url} checks={r.link_checks} />
-              <LinkCard label="Registration form" url={d.registration_form_url} checks={r.link_checks} />
-              <LinkCard label="Registration portal" url={d.registration_portal_url} checks={r.link_checks} />
+              <LinkCard label="Ordinance" sub={d.ordinance_name} url={d.ordinance_url} />
+              <LinkCard label="Registration form" url={d.registration_form_url} />
+              <LinkCard label="Registration portal" url={d.registration_portal_url} />
               {(d.additional_links ?? []).map((l) => (
-                <LinkCard key={l.url} label={l.label} url={l.url} checks={r.link_checks} />
+                <LinkCard key={l.url} label={l.label} url={l.url} />
               ))}
             </div>
           </div>
@@ -635,21 +652,6 @@ function LevelDetail({ entry }: { entry: LevelEntry }) {
               </ul>
             </div>
           )}
-          <div className="callout subtle">
-            <strong>Confidence: {d.confidence}.</strong> {d.confidence_reason}
-          </div>
-          <div className="checklist">
-            <div className="section-title">Sources</div>
-            <ul className="sources">
-              {Array.from(new Set([...d.source_urls, ...r.sources.map((s) => s.url)])).map((u) => (
-                <li key={u}>
-                  <a href={u} target="_blank" rel="noreferrer">
-                    {u}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
         </>
       )}
     </div>
@@ -668,11 +670,8 @@ function Row({ k, v }: { k: string; v: string | null | undefined }) {
   );
 }
 
-function LinkCard({ label, sub, url, checks }: { label: string; sub?: string | null; url: string | null; checks: Rule["link_checks"] }) {
+function LinkCard({ label, sub, url }: { label: string; sub?: string | null; url: string | null }) {
   if (!url) return null;
-  const c = checks[url];
-  const state = c?.state;
-  const text = !c ? null : state === "ok" ? "Link works" : state === "blocked" ? "Site blocks automatic checks" : state === "unreachable" ? "Site did not respond to check" : `Link problem (${c.status})`;
   return (
     <a className="link-card" href={url} target="_blank" rel="noreferrer">
       <div className="link-top">
@@ -681,7 +680,6 @@ function LinkCard({ label, sub, url, checks }: { label: string; sub?: string | n
       </div>
       {sub && <div className="link-sub">{sub}</div>}
       <div className="link-url">{url.replace(/^https?:\/\//, "")}</div>
-      {text && <span className={`link-check ${state}`}>{text}</span>}
     </a>
   );
 }
@@ -864,7 +862,6 @@ function UploadView({ onCreated }: { onCreated: (id: string) => void }) {
                   <th>Rows</th>
                   <th>Required</th>
                   <th>Not required</th>
-                  <th>Needs review</th>
                   <th>Status</th>
                   <th>Uploaded</th>
                 </tr>
@@ -876,10 +873,9 @@ function UploadView({ onCreated }: { onCreated: (id: string) => void }) {
                     <td>{b.counts.total}</td>
                     <td>{b.counts.required}</td>
                     <td>{b.counts.not_required}</td>
-                    <td>{b.counts.review}</td>
                     <td>
                       {b.running ? (
-                        <Badge flag="Unclear">Running {b.counts.done + b.counts.error}/{b.counts.total - b.counts.invalid}</Badge>
+                        <Badge flag="Yes (conditional)">Running {b.counts.done + b.counts.error}/{b.counts.total - b.counts.invalid}</Badge>
                       ) : b.counts.error > 0 ? (
                         <Badge flag="Error">{b.counts.error} failed</Badge>
                       ) : (
@@ -905,8 +901,8 @@ function rowGroup(r: BatchRow): RowFilter {
   if (r.status === "error") return "error";
   if (r.status !== "done") return "pending";
   const f = ["City Wise", "County Wise", "State Wise"].map((k) => r.summary[k]);
-  if (f.includes("Yes")) return "required";
-  if (f.includes("Unclear") || f.includes("Error")) return "review";
+  if (f.some((x) => x?.startsWith("Yes"))) return "required";
+  if (f.includes("Error")) return "review";
   return "not_required";
 }
 
@@ -958,8 +954,8 @@ function BatchView({ id, onOpenRow, onBack }: { id: string; onOpenRow: (lookupId
     { id: "all", label: "All rows", n: c.total, flag: "" },
     { id: "required", label: "Required", n: c.required, flag: "Yes" },
     { id: "not_required", label: "Not required", n: c.not_required, flag: "No" },
-    { id: "review", label: "Needs review", n: c.review, flag: "Unclear" },
-    { id: "pending", label: "Running", n: c.pending, flag: "Unclear" },
+    { id: "review", label: "Could not be checked", n: c.review, flag: "Error" },
+    { id: "pending", label: "Running", n: c.pending, flag: "Yes (conditional)" },
     { id: "error", label: "Failed", n: c.error, flag: "Error" },
     { id: "invalid", label: "Invalid", n: c.invalid, flag: "Error" },
   ];
@@ -1066,7 +1062,7 @@ function BatchView({ id, onOpenRow, onBack }: { id: string; onOpenRow: (lookupId
                             <Badge flag="Error">Failed</Badge> <span className="row-error">{r.error}</span>
                           </>
                         ) : (
-                          <Badge flag="Unclear">{r.status === "running" ? "Looking up…" : "Queued"}</Badge>
+                          <Badge flag="Error">{r.status === "running" ? "Looking up…" : "Queued"}</Badge>
                         )}
                       </td>
                     )}
@@ -1158,7 +1154,7 @@ function HistoryPage({ onOpen }: { onOpen: (id: string) => void }) {
                     </>
                   ) : (
                     <td colSpan={3}>
-                      <Badge flag={r.status === "error" ? "Error" : "Unclear"}>
+                      <Badge flag="Error">
                         {r.status === "error" ? "Failed" : "Running"}
                       </Badge>
                     </td>
@@ -1192,13 +1188,13 @@ function SavedPage() {
     () => (rows ?? []).filter((r) => `${r.jurisdiction} ${r.state}`.toLowerCase().includes(q.toLowerCase())),
     [rows, q]
   );
-  const yn = (v: string | null) =>
-    v === "Yes" ? <Badge flag="Yes" /> : v === "No" ? <Badge flag="No" /> : v ? <Badge flag="Unclear" /> : "—";
+  const yn = (v: string | null, cond?: string | null) =>
+    v === "Yes" ? <Badge flag={cond ? "Yes (conditional)" : "Yes"} /> : v ? <Badge flag="No" /> : "—";
   return (
     <>
       <PageHead
         title="Jurisdictions"
-        sub="Every state, county and city researched so far – the start of your nationwide VPR database."
+        sub="Every state, county and city in the database with its current registration requirement."
       />
       <div className="panel flush">
         <div className="table-tools">
@@ -1218,8 +1214,7 @@ function SavedPage() {
                 <th>Vacant</th>
                 <th>Foreclosure</th>
                 <th>Fee</th>
-                <th>Confidence</th>
-                <th>Researched</th>
+                <th>Updated</th>
                 <th></th>
               </tr>
             </thead>
@@ -1230,10 +1225,9 @@ function SavedPage() {
                     {r.jurisdiction}, {r.state}
                   </td>
                   <td className="cap">{r.level}</td>
-                  <td>{yn(r.vacant_required)}</td>
-                  <td>{yn(r.foreclosure_required)}</td>
+                  <td>{yn(r.vacant_required, r.condition)}</td>
+                  <td>{yn(r.foreclosure_required, r.condition)}</td>
                   <td className="clip">{r.registration_fee || "—"}</td>
-                  <td>{r.confidence ?? "—"}</td>
                   <td className="muted nowrap">{new Date(r.researched_at).toLocaleDateString()}</td>
                   <td>
                     {r.ordinance_url && (
@@ -1246,7 +1240,7 @@ function SavedPage() {
               ))}
               {rows && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="empty-row">Nothing saved yet.</td>
+                  <td colSpan={7} className="empty-row">Nothing saved yet.</td>
                 </tr>
               )}
             </tbody>

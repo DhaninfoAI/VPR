@@ -13,7 +13,7 @@ from .config import get_settings
 
 log = logging.getLogger(__name__)
 
-YES_NO = {"type": "string", "enum": ["Yes", "No", "Unclear"]}
+YES_NO = {"type": "string", "enum": ["Yes", "No"]}
 NULLABLE_STR = {"type": ["string", "null"]}
 
 RULE_SCHEMA: dict = {
@@ -25,8 +25,10 @@ RULE_SCHEMA: dict = {
         "foreclosure_registration_required": YES_NO,
         "applies_in_incorporated_areas": {
             "type": "string",
-            "enum": ["Yes", "No", "Unclear", "Not applicable"],
-            "description": "Counties only: does the county rule also apply inside incorporated cities/towns?",
+            "enum": ["Yes", "No", "Not applicable"],
+            "description": "Counties only: does the county rule also apply inside incorporated cities/towns? "
+                           "Yes if county-wide or a consolidated city-county; No if unincorporated-only or not stated "
+                           "(county codes normally apply only in unincorporated areas). Not applicable for cities/states.",
         },
         "requirement_conditions": {
             **NULLABLE_STR,
@@ -90,8 +92,9 @@ How to research:
 - If you searched the code and found no registration requirement, answer "No" and set ordinance_url to the jurisdiction's code of ordinances (or statutes) page so the operator can verify.
 - Conditional requirements count as "Yes": if the jurisdiction requires registration only when conditions are met (e.g. vacant
   30+ days, a notice of default or lis pendens is filed, 1-4 unit residential only, out-of-area owner), answer "Yes" and
-  describe the conditions in requirement_conditions. Do not answer "No" or "Unclear" just because registration is conditional.
-- Use "Unclear" only when sources conflict or you cannot find/reach the code; explain why in confidence_reason.
+  describe the conditions in requirement_conditions. Do not answer "No" just because registration is conditional.
+- Always decide Yes or No. If a registration program by this jurisdiction is confirmed by any reliable source (code, official page,
+  registry vendor, news of adoption) answer "Yes"; if none is found answer "No". Explain doubts in confidence_reason.
 
 Field guidance:
 - registration_fee / renewal_fee: exact amounts and what they cover, e.g. "$250 per property (initial)". Mention late fees separately in penalties.
@@ -195,7 +198,7 @@ FOLLOWUP_SCHEMA["required"] = list(FOLLOWUP_SCHEMA["properties"].keys())
 FOLLOWUP_INSTRUCTIONS = """You check one jurisdiction's OFFICIAL website for a vacant / abandoned / foreclosed residential property
 registration program (registration by owners, lenders or servicers). Search the government's own website and its
 registration vendor's site. Answer Yes only if an official page shows such a program exists; No if you found the
-official site and it has none; Unclear otherwise. Also find the registration form (PDF or page), the online registration
+official site and it has none or you could not confirm one. Also find the registration form (PDF or page), the online registration
 portal, and the CURRENT registration and renewal fee (this year's fee schedule if possible).
 ordinance_url: the ordinance section itself on a code library or the government site, or null.
 Only output URLs you actually saw in search results; use null when not found. Do not guess."""

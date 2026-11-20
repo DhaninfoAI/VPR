@@ -108,7 +108,21 @@ p { margin: 0; }
 }
 .brand-name { font-weight: 700; font-size: 15px; }
 .brand-sub { color: var(--muted); font-size: 12px; }
-.nav { display: flex; flex-direction: column; gap: 2px; }
+.brand { flex-direction: column; align-items: flex-start; gap: 12px; }
+.brand-logo { display: block; width: 150px; height: auto; }
+.brand-logo.on-dark { display: none; }
+.brand-product { padding-left: 2px; border-left: 0; }
+:root[data-theme="dark"] .brand-logo.on-light { display: none; }
+:root[data-theme="dark"] .brand-logo.on-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo.on-light { display: none; }
+  :root:not([data-theme="light"]) .brand-logo.on-dark { display: block; }
+}
+@media (max-width: 860px) {
+  .brand { flex-direction: row; align-items: center; }
+  .brand-logo { width: 104px; }
+  .brand-product { display: none; }
+}.nav { display: flex; flex-direction: column; gap: 2px; }
 .nav button {
   display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   border: 0; background: none; color: var(--text-2); font: inherit; font-weight: 500;

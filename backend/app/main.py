@@ -53,17 +53,28 @@ class LookupIn(BaseModel):
         return v
 
 
+TECH_ERROR = re.compile(r"^[A-Za-z_.]*(Error|Exception)\b")
+
+
+def _client_error(err: str | None) -> str | None:
+    """Technical exception text is replaced; plain messages (address not found...) are kept."""
+    if err and TECH_ERROR.match(err):
+        return "The lookup could not be completed. Please try again."
+    return err
+
+
 def _lookup_out(lk: Lookup, full: bool = True) -> dict:
     out = {
-        "id": lk.id, "status": lk.status, "progress": lk.progress, "error": lk.error,
+        "id": lk.id, "status": lk.status, "progress": lk.progress, "error": _client_error(lk.error),
         "created_at": lk.created_at.isoformat(), "finished_at": lk.finished_at and lk.finished_at.isoformat(),
-        "input": lk.input,
+        "input": {k: v for k, v in (lk.input or {}).items() if k != "source"},
     }
+    res = service.client_result(lk.result)
     if full:
         out["geocode"] = lk.geocode
-        out["result"] = lk.result
+        out["result"] = res
     else:
-        row = (lk.result or {}).get("row") or {}
+        row = (res or {}).get("row") or {}
         out["summary"] = {k: row.get(k) for k in ("City Wise", "County Wise", "State Wise", "County")}
     return out
 
@@ -72,9 +83,7 @@ def _lookup_out(lk: Lookup, full: bool = True) -> dict:
 def health():
     with engine.connect() as c:
         c.execute(text("select 1"))
-    st = get_settings()
-    return {"db": "ok", "openai_key_configured": bool(st.openai_api_key), "model": st.openai_model,
-            "cache_ttl_days": st.cache_ttl_days}
+    return {"db": "ok"}
 
 
 @app.get("/api/states")
@@ -133,7 +142,7 @@ def _xlsx(results: list[dict], filename: str, headers: list[str] | None = None,
         cell.fill = PatternFill("solid", fgColor="2B2A27")
     wide = {"Notes": 70, "Documents Required": 60, "Other Requirements": 60, "Sources": 50,
             "Ordinance": 45, "Form Link": 45, "Lookup Status": 14, "Problem": 40}
-    tone = {"Yes": "F6D9D4", "No": "D9EEDF", "Unclear": "FBEACB", "Error": "E7E5E0"}
+    tone = {"Yes": "F6D9D4", "Yes (conditional)": "FBEACB", "No": "D9EEDF", "Error": "E7E5E0"}
     flag_cols = {i for i, h in enumerate(headers, start=1) if h in ("City Wise", "County Wise", "State Wise")}
     for i, h in enumerate(headers, start=1):
         ws.column_dimensions[ws.cell(1, i).column_letter].width = wide.get(h, 18)
@@ -157,7 +166,7 @@ def export_lookup(lookup_id: str):
         lk = s.get(Lookup, lookup_id)
         if not lk or not lk.result:
             raise HTTPException(404, "No finished result for this lookup")
-        return _xlsx([lk.result], f"VPR_{lk.input['address'][:30].replace(' ', '_')}.xlsx")
+        return _xlsx([service.client_result(lk.result)], f"VPR_{lk.input['address'][:30].replace(' ', '_')}.xlsx")
 
 
 @app.get("/api/export.xlsx")
@@ -165,7 +174,7 @@ def export_all(limit: int = 500):
     with session_scope() as s:
         rows = s.scalars(select(Lookup).where(Lookup.status == "done", SINGLE_ONLY)
                          .order_by(Lookup.created_at.desc()).limit(limit)).all()
-        return _xlsx([r.result for r in rows if r.result], "VPR_lookups.xlsx")
+        return _xlsx([service.client_result(r.result) for r in rows if r.result], "VPR_lookups.xlsx")
 
 
 # --------------------------------------------------------------------------- bulk upload
@@ -180,7 +189,10 @@ def _row_states(s, ids: list[str]) -> dict[str, dict]:
     cols = [Lookup.id, Lookup.status, Lookup.error] + [Lookup.result[("row", k)].astext for k in SUMMARY_KEYS]
     out = {}
     for rec in s.execute(select(*cols).where(Lookup.id.in_(ids))).all():
-        out[rec[0]] = {"status": rec[1], "error": rec[2], "summary": dict(zip(SUMMARY_KEYS, rec[3:]))}
+        summary = dict(zip(SUMMARY_KEYS, rec[3:]))
+        for k in ("City Wise", "County Wise", "State Wise"):
+            summary[k] = service._client_flag(summary[k])
+        out[rec[0]] = {"status": rec[1], "error": _client_error(rec[2]), "summary": summary}
     return out
 
 
@@ -201,7 +213,8 @@ def _batch_out(b: Batch, states: dict[str, dict], with_rows: bool = True) -> dic
         else:
             counts["done"] += 1
             flags = [summary.get(k) for k in ("City Wise", "County Wise", "State Wise")]
-            key = "required" if "Yes" in flags else "review" if ("Unclear" in flags or "Error" in flags) else "not_required"
+            key = ("required" if any(service.is_required(f) for f in flags)
+                   else "review" if "Error" in flags else "not_required")
             counts[key] += 1
         rows.append({"row": r["row"], "input": r["input"], "extra": r.get("extra") or {}, "lookup_id": r["lookup_id"],
                      "status": status, "error": r["error"] or (st or {}).get("error"), "summary": summary})
@@ -293,7 +306,8 @@ def export_batch(batch_id: str):
             raise HTTPException(404, "Upload not found")
         ids = [r["lookup_id"] for r in b.rows if r["lookup_id"]]
         lookups = {lk.id: lk for lk in s.scalars(select(Lookup).where(Lookup.id.in_(ids)))} if ids else {}
-        result_cols = next((lk.result["columns"] for lk in lookups.values() if lk.result), None) or \
+        results = {i: service.client_result(lk.result) for i, lk in lookups.items()}
+        result_cols = next((res["columns"] for res in results.values() if res), None) or \
             ["Address", "City", "State", "ZIP", "County", "City Wise", "State Wise", "County Wise", "Notes"]
         taken = {"Row", "Lookup Status", "Problem", *result_cols}
         extra_name = {h: (f"{h} (your file)" if h in taken else h) for h in (b.extra_columns or [])}
@@ -312,9 +326,9 @@ def export_batch(batch_id: str):
                 row.update({"Lookup Status": "Failed", "Problem": "Lookup record missing"})
             else:
                 row["Lookup Status"] = status_text.get(lk.status, lk.status)
-                row["Problem"] = lk.error
-                if lk.status == "done" and lk.result:
-                    row.update(lk.result["row"])
+                row["Problem"] = _client_error(lk.error)
+                if lk.status == "done" and results.get(lk.id):
+                    row.update(results[lk.id]["row"])
             out_rows.append(row)
         stem = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(b.filename).stem)[:40] or "upload"
         return _xlsx([], f"VPR_results_{stem}.xlsx", headers=headers, rows=out_rows)
@@ -334,9 +348,10 @@ def list_jurisdictions(state: str | None = None):
             q = q.where(Jurisdiction.state_code == state.upper())
         return [{
             "jurisdiction": j.display_name, "level": j.level, "state": j.state_code,
-            "vacant_required": r.vacant_required, "foreclosure_required": r.foreclosure_required,
+            "vacant_required": service._client_flag(r.vacant_required),
+            "foreclosure_required": service._client_flag(r.foreclosure_required),
+            "condition": (r.data or {}).get("requirement_conditions"),
             "registration_fee": r.registration_fee, "ordinance_url": r.ordinance_url, "form_url": r.form_url,
-            "confidence": (r.data or {}).get("confidence"), "status": r.status,
             "researched_at": r.researched_at.isoformat(),
         } for j, r in s.execute(q).all()]
 

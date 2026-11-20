@@ -1,4 +1,4 @@
-export type Flag = "Yes" | "No" | "Unclear" | "Error";
+export type Flag = "Yes" | "No" | "Error";
 
 export interface RuleData {
   jurisdiction_name: string;
@@ -24,21 +24,14 @@ export interface RuleData {
   penalties: string | null;
   contact_info: string | null;
   summary: string;
-  confidence: string;
-  confidence_reason: string;
-  source_urls: string[];
 }
 
 export interface Rule {
   rule_id: number;
   status: string;
   researched_at: string;
-  model: string | null;
   data: RuleData | null;
-  sources: { url: string; title: string | null }[];
-  link_checks: Record<string, { state: string; status: number | null }>;
   from_cache: boolean;
-  error: string | null;
 }
 
 export interface LevelEntry {
@@ -48,6 +41,7 @@ export interface LevelEntry {
   reason: string | null;
   rule: Rule | null;
   skipped?: boolean;
+  condition?: string | null;
 }
 
 export interface LookupInput {
@@ -96,8 +90,7 @@ export interface SavedRule {
   registration_fee: string | null;
   ordinance_url: string | null;
   form_url: string | null;
-  confidence: string | null;
-  status: string;
+  condition: string | null;
   researched_at: string;
 }
 

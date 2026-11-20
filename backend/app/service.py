@@ -163,11 +163,19 @@ def get_or_research(j: dict, loc: dict, force: bool, on_state=lambda key, state:
 
 def _base_flag(data: dict) -> str:
     vals = (data.get("vacant_registration_required"), data.get("foreclosure_registration_required"))
-    if "Yes" in vals:
-        return "Yes"
-    if "Unclear" in vals:
-        return "Unclear"
-    return "No"
+    # Research answers only Yes/No; a legacy "Unclear" means a requirement was not confirmed -> No.
+    return "Yes" if "Yes" in vals else "No"
+
+
+def wise_value(entry: dict) -> str:
+    """Sheet value for a level: Yes / Yes (conditional) / No / Error."""
+    if entry["flag"] == "Yes" and entry.get("condition"):
+        return "Yes (conditional)"
+    return entry["flag"]
+
+
+def is_required(value: str | None) -> bool:
+    return bool(value) and value.startswith("Yes")
 
 
 def _reg_type(data: dict) -> str:
@@ -193,7 +201,7 @@ def _level_entry(level: str, j: dict | None, rule: dict | None, loc: dict) -> di
     entry = {"level": level, "jurisdiction": j["display_name"], "rule": rule, "reason": None}
     if rule is None or rule["status"] == "error":
         entry["flag"] = "Error"
-        entry["reason"] = (rule or {}).get("error") or "Research failed"
+        entry["reason"] = "This jurisdiction could not be checked at this time. Please run the lookup again."
         return entry
 
     data = rule["data"]
@@ -206,10 +214,13 @@ def _level_entry(level: str, j: dict | None, rule: dict | None, loc: dict) -> di
             entry["reason"] = (f"{j['display_name']} has a registration rule, but it applies only in unincorporated "
                                f"areas and this property is inside {loc['municipality']['label']} of "
                                f"{loc['municipality']['name']}.")
-        elif scope == "Unclear":
-            flag = "Unclear"
-            entry["reason"] = "County rule exists; unclear whether it applies inside city limits."
+        elif scope != "Yes":  # not stated: county codes normally apply only in unincorporated areas
+            flag = "No"
+            entry["reason"] = (f"{j['display_name']} has a registration rule for unincorporated areas only; this "
+                               f"property is inside {loc['municipality']['label']} of {loc['municipality']['name']}.")
     entry["flag"] = flag
+    # "Required with condition": the requirement applies only when the stated condition is met.
+    entry["condition"] = (data.get("requirement_conditions") or None) if flag == "Yes" else None
     return entry
 
 
@@ -225,8 +236,58 @@ def _skipped_entry(level: str, j: dict, stop: dict) -> dict:
                        f"so further review was not done.")}
 
 
+CLIENT_HIDDEN_DATA = ("confidence", "confidence_reason", "source_urls")
+CLIENT_HIDDEN_COLUMNS = {"Confidence", "Sources"}
+
+
+def _client_flag(v):
+    return "No" if v == "Unclear" else v
+
+
+def client_result(result: dict | None) -> dict | None:
+    """What the client may see: no model names, sources or confidence, and never "Unclear".
+    Also upgrades results stored before these rules existed."""
+    if not result:
+        return result
+    res = json.loads(json.dumps(result))  # deep copy
+    rename = {"Researched On": "Last Updated"}
+    res["columns"] = [rename.get(c, c) for c in res.get("columns") or [] if c not in CLIENT_HIDDEN_COLUMNS]
+    row = {rename.get(k, k): v for k, v in (res.get("row") or {}).items() if k not in CLIENT_HIDDEN_COLUMNS}
+    for k in ("City Wise", "County Wise", "State Wise"):
+        row[k] = _client_flag(row.get(k))
+    if row.get("Notes"):
+        row["Notes"] = "\n".join(l for l in row["Notes"].split("\n") if "manual verification needed" not in l)
+    res["row"] = row
+    for entry in (res.get("levels") or {}).values():
+        entry["flag"] = _client_flag(entry.get("flag"))
+        if entry.get("reason") and "unclear" in entry["reason"].lower():
+            entry["reason"] = None
+        rule = entry.get("rule")
+        if not rule:
+            continue
+        for k in ("model", "sources", "link_checks", "status", "error"):
+            rule.pop(k, None)
+        d = rule.get("data") or {}
+        for k in CLIENT_HIDDEN_DATA:
+            d.pop(k, None)
+        for k in ("vacant_registration_required", "foreclosure_registration_required", "applies_in_incorporated_areas"):
+            d[k] = _client_flag(d.get(k))
+        if "condition" not in entry:
+            entry["condition"] = (d.get("requirement_conditions") or None) if entry["flag"] == "Yes" else None
+    return res
+
+
 def _condition(data: dict) -> str | None:
     return data.get("requirement_conditions") or data.get("registration_trigger")
+
+
+def _condition_lines(e: dict) -> list[str]:
+    d = e["rule"]["data"]
+    if e.get("condition"):
+        return [f"{e['jurisdiction']} - required with condition: {e['condition']}"]
+    if d.get("registration_trigger"):
+        return [f"{e['jurisdiction']} - required when: {d['registration_trigger']}"]
+    return []
 
 
 # --------------------------------------------------------------------------- output
@@ -248,7 +309,7 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
     ordered = [levels[l] for l in LEVELS]
     applicable = [e for e in ordered if e["jurisdiction"]]
     yes = [e for e in applicable if e["flag"] == "Yes"]
-    unclear = [e for e in applicable if e["flag"] in ("Unclear", "Error")]
+    failed = [e for e in applicable if e["flag"] == "Error"]
     no = [e for e in applicable if e["flag"] == "No"]
     primary = applicable[0] if applicable else None  # most local jurisdiction
 
@@ -269,27 +330,25 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
               f"level{'s' if len(skipped) > 1 else ''}.") if skipped else "."
         lines.append(s)
         lines.append(f"{stop['jurisdiction']} - registration type: {_reg_type(d)}.")
-        if _condition(d):
-            lines.append(f"{stop['jurisdiction']} - required when: {_condition(d)}")
+        lines += _condition_lines(stop)
         for e in yes:  # a more local level that required (vacant) registration before the stop
             if e is not stop:
                 od = e["rule"]["data"]
                 lines.append(f"VPR is also required at the {e['jurisdiction']} level - registration type: {_reg_type(od)}.")
-                if _condition(od):
-                    lines.append(f"{e['jurisdiction']} - required when: {_condition(od)}")
+                lines += _condition_lines(e)
     elif yes:
-        s = f"VPR is required at the {names(yes, 'and')} level{'s' if len(yes) > 1 else ''}"
+        with_cond = " (with condition)" if all(e.get("condition") for e in yes) else ""
+        s = f"VPR is required{with_cond} at the {names(yes, 'and')} level{'s' if len(yes) > 1 else ''}"
         s += f" but is not required at the {names(no)} level" if no else ""
         lines.append(s + " for the mentioned property.")
         for e in yes:
             d = e["rule"]["data"]
             lines.append(f"{e['jurisdiction']} - registration type: {_reg_type(d)}.")
-            if _condition(d):
-                lines.append(f"{e['jurisdiction']} - required when: {_condition(d)}")
-    elif not unclear:
+            lines += _condition_lines(e)
+    elif not failed:
         lines.append(f"VPR is not required at the {names(no)} level for the mentioned property.")
-    for e in ([] if stop else unclear):
-        lines.append(f"VPR requirement at the {e['jurisdiction']} level could not be confirmed - manual verification needed.")
+    for e in ([] if stop else failed):
+        lines.append(f"The {e['jurisdiction']} requirement could not be checked at this time - please run the lookup again.")
     for e in ordered:  # explain why a level does not apply (unincorporated, no county govt, city-only rule...)
         if e["reason"] and e["flag"] == "No" and not e.get("skipped"):
             lines.append(e["reason"])
@@ -318,11 +377,7 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
 
     fee_renew = lambda d: " / ".join(x for x in (d.get("renewal_fee"), d.get("renewal_frequency")) if x)
     method = lambda d: (d.get("registration_method") or "") + (f" ({d['third_party_platform']})" if d.get("third_party_platform") else "")
-    sources = sorted({u for e in applicable if e.get("rule") and e["rule"].get("data")
-                      for u in (e["rule"]["data"].get("source_urls") or [])})
     researched = [e["rule"]["researched_at"] for e in applicable if e.get("rule") and e["rule"].get("data")]
-    confidences = [e["rule"]["data"]["confidence"] for e in applicable if e.get("rule") and e["rule"].get("data")]
-    conf_rank = {"Low": 0, "Medium": 1, "High": 2}
 
     county = loc.get("county") or {}
     row = {
@@ -331,9 +386,9 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
         "State": loc["state_code"],
         "ZIP": loc.get("zip") or lookup_input.get("zip"),
         "County": county.get("name") or "",
-        "City Wise": levels["city"]["flag"],
-        "State Wise": levels["state"]["flag"],
-        "County Wise": levels["county"]["flag"],
+        "City Wise": wise_value(levels["city"]),
+        "State Wise": wise_value(levels["state"]),
+        "County Wise": wise_value(levels["county"]),
         "Ordinance": "\n".join(ordinance_urls) or "N/A",
         "Notes": "\n".join(lines),
         "Form Link": "\n".join(form_urls) or "N/A",
@@ -347,9 +402,7 @@ def _compose(lookup_input: dict, loc: dict, levels: dict[str, dict]) -> dict:
         "Other Requirements": _join(yes, lambda d: d.get("other_requirements")),
         "Penalties": _join(yes, lambda d: d.get("penalties")),
         "Contact": _join(yes, lambda d: d.get("contact_info")),
-        "Confidence": min(confidences, key=lambda c: conf_rank.get(c, 0)) if confidences else "N/A",
-        "Sources": "\n".join(sources) or "N/A",
-        "Researched On": min(researched)[:10] if researched else "",
+        "Last Updated": min(researched)[:10] if researched else "",
     }
     # JSONB does not keep key order, so store the sheet's column order explicitly.
     return {"columns": list(row.keys()), "row": row, "levels": levels}

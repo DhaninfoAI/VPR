@@ -56,7 +56,8 @@ def main(check_links: bool = True) -> None:
         entries = json.loads(path.read_text(encoding="utf-8"))
         print(f"{path.name}: {len(entries)} entries")
         for e in entries:
-            latest[key_for(e)] = e
+            if "data" in e:  # patch files (35_resolve_*) are applied by apply_patches.py instead
+                latest[key_for(e)] = e
     for path in [None]:
         for e in latest.values():
             st = e["state"].upper()
